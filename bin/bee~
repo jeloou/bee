@@ -1,0 +1,7 @@
+#!/bin/sh
+
+IS_PACKAGED_VERSION='bee'
+if [ "$IS_PACKAGED_VERSION" != 'bee' ]; then
+    echo 'here?';
+    exit 1;
+fi

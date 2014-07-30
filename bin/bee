@@ -1,0 +1,11 @@
+#!/bin/sh
+
+IS_PACKAGED_VERSION='${project.name}'
+if [ "$IS_PACKAGED_VERSION" != 'bee' ]; then
+    cat >&2 <<EOF
+Error: you must build the project with Maven before you can run bee.
+EOF
+    exit 1;
+fi
+
+

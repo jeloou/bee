@@ -1,9 +1,20 @@
-*.class
+.DS_Store
+.idea/
+.gradle/
+build/
+target/
 
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
+## Emacs ignores
+*.*~
+*/*.*~
+*/#*
+*/.#*
 
-# Package Files #
+## Netbeans ignores
+nb-configuration.xml
+nbactions.xml
+
+## Package files
 *.jar
 *.war
 *.ear
