@@ -1,6 +1,6 @@
 package io.jull.bee.server;
 
-import io.jull.client.Client;
+import io.jull.bee.client.Client;
 
 public interface ServerListener {
     public void onClientConnect(Client client);

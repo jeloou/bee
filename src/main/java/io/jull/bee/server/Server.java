@@ -9,6 +9,7 @@ import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
+import java.nio.channels.CancelledKeyException;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.ArrayList;
@@ -29,10 +30,10 @@ public abstract class Server extends ServerAdapter implements Runnable {
     private Selector selector;
     private List<Worker> workers;
     private int current = 0;
-    private Collection<Client> clients;
+    private Collection<Client> clientsQueue;
 
     public class Worker extends Thread {
-	private BlockingQueue<Client> queue;
+	private BlockingQueue<Client> clientsQueue;
 	
 	public Worker() {
 	    clientsQueue = new LinkedBlockingQueue<Client>();
@@ -46,13 +47,13 @@ public abstract class Server extends ServerAdapter implements Runnable {
 	    
 	    while (true) {
 		try {
-		    client = queue.take();
-		    buffer = client.queue.poll();
+		    client = clientsQueue.take();
+		    buffer = client.inQueue.poll();
 		    if (buffer == null) {
 			continue;
 		    }
 		    
-		    client.talk(buffer);
+		    client.parse(buffer);
 		} catch (InterruptedException e) {
 		} catch (RuntimeException e ) {
 		    System.out.println("worker exception");
@@ -142,7 +143,7 @@ public abstract class Server extends ServerAdapter implements Runnable {
 			    SocketChannel channel = server.accept();
 			    channel.configureBlocking(false);
 			    
-			    client = new Client();
+			    client = new Client(this);
 			    key = channel.register(selector, SelectionKey.OP_READ, client);
 			    
 			    client.channel = channel;
@@ -161,7 +162,7 @@ public abstract class Server extends ServerAdapter implements Runnable {
 			    int read = client.channel.read(buffer);
 			    buffer.flip();
 			    if (read > -1) {
-				client.queue.put(buffer);
+				client.inQueue.put(buffer);
 
 				Worker worker = null;
 				if (client.worker == null) {
@@ -186,6 +187,7 @@ public abstract class Server extends ServerAdapter implements Runnable {
 			if (key.isWritable()) {
 			    System.out.println("isWritable");
 			    
+			    /*
 			    client = (Client) key.attachment();
 			    ByteBuffer buffer = client.outQueue.peek();
 			    do {
@@ -201,7 +203,8 @@ public abstract class Server extends ServerAdapter implements Runnable {
 			    if (key.isValid()) {
 				key.interestOps(SelectionKey.OP_READ);
 			    }
-
+			    */
+			    
 			    i.remove();
 			    continue;
 			}
@@ -222,21 +225,21 @@ public abstract class Server extends ServerAdapter implements Runnable {
     }
     
     protected boolean addClient(Client client) {
-	synchronized(clients) {
-	    return this.clients.add(client);
+	synchronized(clientsQueue) {
+	    return this.clientsQueue.add(client);
 	}
     }
 
     protected boolean removeClient(Client client) {
-	synchronized(clients) {
-	    return this.clients.remove(client);
+	synchronized(clientsQueue) {
+	    return this.clientsQueue.remove(client);
 	}
     }
 
     @Override
     public final void onClientConnect(Client client) {
 	if (addClient(client)) {
-	    onConnect(client);
+	    //onConnect(client);
 	}
     }
 
@@ -252,6 +255,6 @@ public abstract class Server extends ServerAdapter implements Runnable {
 	} catch (CancelledKeyException e) {
 	    client.outQueue.clear();	    
 	}
-	selector.wakeUp();
+	selector.wakeup();
     }
 }

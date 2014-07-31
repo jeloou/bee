@@ -14,10 +14,13 @@ import io.jull.bee.packet.Packet;
 
 public class Client implements ClientInterface {
     public ByteChannel channel;
-    public BlockingQueue<ByteBuffer> queue;
     public SelectionKey key;
     public Worker worker;
     
+    public BlockingQueue<ByteBuffer> inQueue;
+    public BlockingQueue<ByteBuffer> outQueue;
+    
+    private ServerListener listener;
     private STATUSES status = STATUSES.NOT_CONNECTED;
     private Packet packet;
     
@@ -28,7 +31,7 @@ public class Client implements ClientInterface {
     }
     
     public void parse(ByteBuffer buffer) {
-	if (!packet) {
+	if (packet == null) {
 	    packet = new Packet();
 	}
 
@@ -41,12 +44,12 @@ public class Client implements ClientInterface {
 	    return;
 	}
 	
-	switch (packet.type) {
-	case Packet.TYPES.CONNECT:
+	switch (packet.getType()) {
+	case CONNECT:
 	    handleConnect(packet);
 	    break;
 	/*
-	case Packet.TYPES.DISCONNECT:
+	case DISCONNECT:
            handleDisconnect(packet);
            break;
         case Packet.TYPES.SUBSCRIBE:
@@ -68,7 +71,7 @@ public class Client implements ClientInterface {
 	if (status != STATUSES.NOT_CONNECTED) {
 	    return;
 	}
-	
+	/*
 	write(PacketFactory.createConnack());
 	status = STATUSES.CONNECTED;
 	try {
@@ -76,6 +79,7 @@ public class Client implements ClientInterface {
 	} catch(RuntimeException e) {
 	    listener.onClientError(this, e);
 	}
+	*/
     }
     
     private void handleDisconnect(Packet packet) {
