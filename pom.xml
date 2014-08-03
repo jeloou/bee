@@ -67,39 +67,39 @@
 	  <target>1.7</target>
 	</configuration>
       </plugin>
-      <plugin>
-	<artifactId>maven-resources-plugin</artifactId>
-	<version>2.6</version>
-	<executions>
-	  <execution>
-	    <id>copy-resources</id>
-	    <phase>prepare-package</phase>
-	    <goals>
-	      <goal>copy-resources</goal>
-	    </goals>
-	    <configuration>
-	      <outputDirectory>/bin</outputDirectory>
-	      <resources>
-		<resource>
-		  <directory>/bin</directory>
-		  <filtering>true</filtering>
-		  <excludes>
-		    <exclude>*.exe</exclude>
-		  </excludes>
-		</resource>
-		<resource>
-		  <directory>/bin</directory>
-		  <filtering>false</filtering>
-		  <includes>
-		    <include>*.exe</include>
-		  </includes>
-		</resource>
-	      </resources>
-	    </configuration>
-	  </execution>
-	</executions>
-      </plugin>
+    <plugin>
+      <groupId>com.google.code.maven-replacer-plugin</groupId>
+      <artifactId>replacer</artifactId>
+      <version>1.5.3</version>
+      <executions>
+	<execution>
+	  <phase>prepare-package</phase>
+	  <goals>
+	    <goal>replace</goal>
+	  </goals>
+	</execution>
+      </executions>
+      <configuration>
+	<file>${project.basedir}/bin/${project.artifactId}</file>
+	<replacements>
+	  <replacement>
+	    <token>project.name</token>
+	    <value>${project.name}</value>
+	  </replacement>
+	  <replacement>
+	    <token>project.main</token>
+	    <value>io.jull.bee.bootstrap.Bee</value>
+	  </replacement>
+	  <replacement>
+	    <token>project.version</token>
+	    <value>${project.version}</value>
+	  </replacement>
+	</replacements>
+	<delimiters>
+	  <delimiter>@</delimiter>
+	</delimiters>
+      </configuration>
+    </plugin>
     </plugins>
   </build>
-  
 </project>

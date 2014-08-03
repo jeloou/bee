@@ -1,11 +1,258 @@
-#!/bin/sh
+#!/bin/bash
 
-IS_PACKAGED_VERSION='${project.name}'
-if [ "$IS_PACKAGED_VERSION" != 'bee' ]; then
-    cat >&2 <<EOF
-Error: you must build the project with Maven before you can run bee.
+USAGE=$(cat <<EOF
+Usage: $0 [options]
+
+Options:
+  -d, --daemon
+  -v, --version
+  -h, --help
 EOF
-    exit 1;
+)
+
+# Maven will replace project.name with your project name. If the project has not 
+# been compiled yet, the script will throw an error.
+IS_PACKAGED='@project.name@'
+if [ "$IS_PACKAGED" != 'bee' ]; then
+  cat >&2 <<EOF
+Error: you must build the project with Maven before you can run @project.name@.
+EOF
+  exit 1;
 fi
 
+# This will resolve the symbolic link, if any.
+SCRIPT="$0"
+while [ -h "$SCRIPT" ] ; do
+  ls=`ls -ld "$SCRIPT"`
+  # Drop everything prior to ->
+  
+  link=`expr "$ls" : '.*-> \(.*\)$'`
+  if expr "$link" : '/.*' > /dev/null; then
+    SCRIPT="$link"
+  else
+    SCRIPT=`dirname "$SCRIPT"`/"$link"
+  fi
+done
 
+PROJECT_HOME=`dirname $SCRIPT`/..
+PROJECT_HOME=`cd "$PROJECT_HOME"; pwd`
+
+if [ -x "$JAVA_HOME/bin/java" ]; then
+  JAVA="$JAVA_HOME/bin/java"
+else
+  JAVA=`which java`
+fi
+
+if [ ! -x "$JAVA" ]; then
+  echo "Couldn't find any Java binary" >&2
+  exit 1
+fi
+
+PREFIX='@project.name@'
+UPPER_PREFIX=$(tr '[:lower:]' '[:upper:]' <<< $PREFIX)
+
+# PROJECT_CLASSPATH contains the name of your classes dir. This will
+# throw and error if the variable has not been created.
+PROJECT_CLASSPATH=$UPPER_PREFIX"_CLASSPATH"
+if [ -z `eval "echo $"$PROJECT_CLASSPATH` ]; then
+  echo "You must set the $PROJECT_CLASSPATH var" >&2
+  exit 1
+fi
+
+PROJECT_CLASSPATH=`eval "echo $"$PROJECT_CLASSPATH`
+re="\-([a-zA-Z]), --([a-zA-Z]+)+ *(<[a-zA-Z]+>)*"
+properties=""
+is_empty() {
+  if [ "x$1" = "x" ]; then
+    echo true
+    return
+  fi
+  echo false
+}
+
+add_property() {
+  properties="$properties -D$PREFIX.$1=$2"
+}
+
+has_property() {
+  if grep -q -v "D$PREFIX.$1" <<< $properties; then
+    echo false
+    return
+  fi
+  echo true
+}
+
+get_option() {
+  if [ $(is_empty "$2") = true ]; then
+    echo $(grep -o "\-[a-zA-Z], \-\{2\}\b"$1"\b \{0,1\}<*[a-zA-Z]*>*" <<< $USAGE)
+    return 
+  fi
+    
+  echo $(grep -o "\-\b"$1"\b, \-\{2\}[a-zA-Z]\{1,\} \{0,1\}<*[a-zA-Z]*>*" <<< $USAGE)
+}
+
+has_option() {
+  if [ $(is_empty $(get_option "$1" "$2")) = true ]; then
+    echo false
+    return
+  fi
+  echo true
+}
+
+needs_value() {
+  option=$(get_option "$1")
+
+  if [[ $option =~ $re ]]; then
+    if [ $(is_empty "${BASH_REMATCH[3]}") = true ]; then
+      echo false
+      return
+    fi
+    echo true
+  fi
+}
+
+usage() {
+  echo "$USAGE"
+}
+
+version() {
+  echo "@project.version@"
+}
+
+run() {
+  daemon=$1
+  properties=$2
+    
+  if [ "x$daemon" = "x" ]; then
+    exec "$JAVA" -D@project.name@.path.home="$PROJECT_HOME" -cp "$PROJECT_CLASSPATH" $properties \
+	@project.main@
+  else
+    exec "$JAVA" -D@project.name@.path.home="$PROJECT_HOME" -cp "$PROJECT_CLASSPATH" $properties \
+	@project.main@ <&- &
+    
+    return $?
+  fi
+}
+
+ARGV=""
+while [ $# -gt 0 ]
+do
+  case $1 in
+    --*)
+	 k="${1#--}"
+	 if [ $(has_option "$k") = false ]; then
+	   cat >&2 <<EOF
+Error: You're passing the invalid option --$k to the script
+EOF
+	   exit 1
+	 fi
+	 
+         if [ $(has_property "$k") = false ]; then
+           v='yes'
+	   if [ $(needs_value "$k") = true ]; then
+	     if [[ "$2" == -* ]] || [ $(is_empty "$2") = true ]; then
+	       cat >&2 <<EOF
+Error: The option --$k was expecting a value
+EOF
+	       exit 1
+	     fi
+             v=$2
+           fi
+           add_property "$k" "$v"
+         else
+	   exit 1
+	 fi
+	 shift
+         ;;
+     *) 
+        ARGV="$ARGV $1"; shift
+  esac
+done
+
+if [ $(has_property "version") = true ]; then
+  version
+  exit 0
+fi
+
+if [ $(has_property "help") = true ]; then
+  usage 
+  exit 0
+fi
+
+# Automatically generates the getopt opstring using USAGE
+options=`grep -o '\-[a-zA-Z], \-\{2\}[a-zA-Z]\{1,\} *<*[a-zA-Z]*>*' <<< $USAGE`
+OLD_IFS=$IFS
+IFS=$'\n' options=($options)
+IFS=$OLD_IFS
+
+optstring=""
+for option in "${options[@]}"
+do
+  if [[ $option =~ $re ]]; then
+    optstring="$optstring${BASH_REMATCH[1]}"
+    if [ $(is_empty "${BASH_REMATCH[3]}") = false ]; then
+      optstring="$optstring:"
+    fi
+  fi
+done
+
+optstring=$optstring"D:"
+err=$(getopt $optstring $ARGV 2>&1 > /dev/null)
+if [ $(is_empty "$err") != true ]; then
+  cat >&2 <<EOF
+Error: You're passing the invalid option -$(sed "s/.*'\(.*\)'/\1/" <<< $err) to the script
+EOF
+  exit 1
+fi
+
+args=`getopt $optstring $ARGV`
+eval set -- "$args"
+
+while true; do
+  case $1 in
+    -v) 
+        version
+	exit 0
+	;;
+    -h)
+        usage
+	exit 0
+	;;
+    -d) 
+        daemon='yes'
+	shift
+	;;
+    -D)
+	properties="$properties -D$2"
+        shift 2
+        ;;
+    --) 
+	shift
+	break
+	;;
+     *)
+        k="${1#-}"
+        option=$(get_option "$k" true)
+        if [[ $option =~ $re ]]; then
+	  k="${BASH_REMATCH[2]}"
+	  ev="${BASH_REMATCH[3]}"
+	  
+	  if [ $(has_property "$k") = false ]; then
+            if [ $(is_empty "$ev") = false ]; then
+	      add_property "$k" "$2"
+	      shift 2
+	    else
+	      add_property "$k" 'yes'
+	      shift
+	    fi
+	  else
+	    shift
+	  fi
+	fi
+	;;
+  esac
+done
+
+run "$daemon" "$properties"
+
+exit $?
