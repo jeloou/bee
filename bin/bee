@@ -4,6 +4,7 @@ USAGE=$(cat <<EOF
 Usage: $0 [options]
 
 Options:
+  -p, --pid <p>
   -d, --daemon
   -v, --version
   -h, --help

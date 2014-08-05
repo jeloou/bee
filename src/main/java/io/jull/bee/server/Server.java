@@ -20,7 +20,7 @@ import java.util.List;
 
 import io.jull.bee.client.Client;
 
-public abstract class Server extends ServerAdapter implements Runnable {
+public final class Server extends ServerAdapter implements Runnable {
     
     public static int WORKERS = Runtime.getRuntime().availableProcessors();
     
@@ -75,6 +75,7 @@ public abstract class Server extends ServerAdapter implements Runnable {
     public Server(int port, int workers) {
 	this(new InetSocketAddress(port), workers);
     }
+    
     public Server(InetSocketAddress address) {
 	this(address, WORKERS);
     }
@@ -93,6 +94,10 @@ public abstract class Server extends ServerAdapter implements Runnable {
     }
     
     public void stop() {
+	
+    }
+    
+    public void close() {
 	
     }
     
