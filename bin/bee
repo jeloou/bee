@@ -16,7 +16,7 @@ EOF
 IS_PACKAGED='@project.name@'
 if [ "$IS_PACKAGED" != 'bee' ]; then
   cat >&2 <<EOF
-Error: you must build the project with Maven before you can run @project.name@.
+Error: you must build the project with Maven before you can run it.
 EOF
   exit 1;
 fi
@@ -61,7 +61,7 @@ if [ -z `eval "echo $"$PROJECT_CLASSPATH` ]; then
 fi
 
 PROJECT_CLASSPATH=`eval "echo $"$PROJECT_CLASSPATH`
-re="\-([a-zA-Z]), --([a-zA-Z]+)+ *(<[a-zA-Z]+>)*"
+re="-*([a-zA-Z])*,* *--([a-zA-Z]+)+ *(<[a-zA-Z]+>)*"
 properties=""
 is_empty() {
   if [ "x$1" = "x" ]; then
@@ -85,11 +85,11 @@ has_property() {
 
 get_option() {
   if [ $(is_empty "$2") = true ]; then
-    echo $(grep -o "\-[a-zA-Z], \-\{2\}\b"$1"\b \{0,1\}<*[a-zA-Z]*>*" <<< $USAGE)
-    return 
+    echo $(grep -o -E "(-[a-zA-Z]{1}, )?-{2}"$1"{1,}( <[a-zA-Z]>)?" <<< $USAGE)
+    return
   fi
-    
-  echo $(grep -o "\-\b"$1"\b, \-\{2\}[a-zA-Z]\{1,\} \{0,1\}<*[a-zA-Z]*>*" <<< $USAGE)
+  
+  echo $(grep -o -E "\-"$1"{1}, -{2}[a-zA-Z]{1,}( <[a-zA-Z]>)?" <<< $USAGE)
 }
 
 has_option() {
@@ -181,7 +181,7 @@ if [ $(has_property "help") = true ]; then
 fi
 
 # Automatically generates the getopt opstring using USAGE
-options=`grep -o '\-[a-zA-Z], \-\{2\}[a-zA-Z]\{1,\} *<*[a-zA-Z]*>*' <<< $USAGE`
+options=$(grep -o -E "\-[a-zA-Z]{1}, -{2}[a-zA-Z]{1,}( <[a-zA-Z]>)?" <<< $USAGE)
 OLD_IFS=$IFS
 IFS=$'\n' options=($options)
 IFS=$OLD_IFS
@@ -200,8 +200,16 @@ done
 optstring=$optstring"D:"
 err=$(getopt $optstring $ARGV 2>&1 > /dev/null)
 if [ $(is_empty "$err") != true ]; then
+  option=$(sed "s/.*'\(.*\)'/\1/" <<< $err)
+  if [ $(is_empty `grep -o "requires" <<< $err`) = false ]; then
+    cat >&2 <<EOF
+Error: The option --$option was expecting a value
+EOF
+    exit 1
+  fi
+  
   cat >&2 <<EOF
-Error: You're passing the invalid option -$(sed "s/.*'\(.*\)'/\1/" <<< $err) to the script
+Error: You're passing the invalid option -$option to the script
 EOF
   exit 1
 fi
