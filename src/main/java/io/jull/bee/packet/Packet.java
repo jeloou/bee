@@ -12,6 +12,7 @@ public class Packet implements PacketInterface {
     private boolean retain = false;
     private int qos = 0;
     
+    private int remaining = 0;
     private Collection<ByteBuffer> buffers;
     
     private boolean complete = false;
@@ -41,6 +42,13 @@ public class Packet implements PacketInterface {
 	    if ((int)(fixed & 0x1) > 0) {
 		retain = true;
 	    }
+
+	    int m = 1;
+	    do {
+		fixed = buffer.get();
+		remaining += ((int)(fixed & 0x7f) * m);
+		m *= 0x80;
+	    } while((fixed & 0x80) > 0);
 	}
     }
     
