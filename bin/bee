@@ -18,7 +18,7 @@ if [ "$IS_PACKAGED" != 'bee' ]; then
   cat >&2 <<EOF
 Error: you must build the project with Maven before you can run it.
 EOF
-  exit 1;
+  exit 1
 fi
 
 # This will resolve the symbolic link, if any.
@@ -55,6 +55,23 @@ UPPER_PREFIX=$(tr '[:lower:]' '[:upper:]' <<< $PREFIX)
 # PROJECT_CLASSPATH contains the name of your classes dir. This will
 # throw and error if the variable has not been created.
 PROJECT_CLASSPATH=$UPPER_PREFIX"_CLASSPATH"
+PROJECT_INCLUDE=$UPPER_PREFIX"_INCLUDE"
+
+if [ -z `eval "echo $"$PROJECT_INCLUDE` ]; then
+  for include in /usr/share/@project.name@/@project.name@.in.sh \
+                 /usr/local/share/@project.name@/@project.name@.in.sh \
+                 /opt/@project.name@/@project.name@.in.sh \
+                 ~/.@project.name@.in.sh \
+                 "`dirname $0`"/@project.name@.in.sh; do
+    if [ -r "$include" ]; then
+      . "$include"
+      break
+    fi
+  done
+elif [ -r "`eval "echo $"$PROJECT_INCLUDE`" ]; then
+  . "`eval "echo $"$PROJECT_INCLUDE`"
+fi
+
 if [ -z `eval "echo $"$PROJECT_CLASSPATH` ]; then
   echo "You must set the $PROJECT_CLASSPATH var" >&2
   exit 1
@@ -63,28 +80,19 @@ fi
 PROJECT_CLASSPATH=`eval "echo $"$PROJECT_CLASSPATH`
 re="-*([a-zA-Z])*,* *--([a-zA-Z]+)+ *(<[a-zA-Z]+>)*"
 properties=""
-is_empty() {
-  if [ "x$1" = "x" ]; then
-    echo true
-    return
-  fi
-  echo false
-}
-
 add_property() {
   properties="$properties -D$PREFIX.$1=$2"
 }
 
 has_property() {
   if grep -q -v "D$PREFIX.$1" <<< $properties; then
-    echo false
-    return
+    return 1
   fi
-  echo true
+  return 0
 }
 
 get_option() {
-  if [ $(is_empty "$2") = true ]; then
+  if [ -z $2 ]; then
     echo $(grep -o -E "(-[a-zA-Z]{1}, )?-{2}"$1"{1,}( <[a-zA-Z]>)?" <<< $USAGE)
     return
   fi
@@ -92,23 +100,12 @@ get_option() {
   echo $(grep -o -E "\-"$1"{1}, -{2}[a-zA-Z]{1,}( <[a-zA-Z]>)?" <<< $USAGE)
 }
 
-has_option() {
-  if [ $(is_empty $(get_option "$1" "$2")) = true ]; then
-    echo false
-    return
-  fi
-  echo true
-}
-
 needs_value() {
-  option=$(get_option "$1")
-
-  if [[ $option =~ $re ]]; then
-    if [ $(is_empty "${BASH_REMATCH[3]}") = true ]; then
-      echo false
-      return
+  if [[ $(get_option "$1") =~ $re ]]; then
+    if [ -n "${BASH_REMATCH[3]}" ]; then
+      return 0
     fi
-    echo true
+    return 1
   fi
 }
 
@@ -141,17 +138,17 @@ do
   case $1 in
     --*)
 	 k="${1#--}"
-	 if [ $(has_option "$k") = false ]; then
+         if [[ -z `get_option "$k"` ]]; then
 	   cat >&2 <<EOF
 Error: You're passing the invalid option --$k to the script
 EOF
 	   exit 1
 	 fi
 	 
-         if [ $(has_property "$k") = false ]; then
+         if ! `has_property "$k"`; then
            v='yes'
-	   if [ $(needs_value "$k") = true ]; then
-	     if [[ "$2" == -* ]] || [ $(is_empty "$2") = true ]; then
+           if `needs_value "$k"`; then
+	     if [[ "$2" == -* ]] || [ -z $2 ]; then
 	       cat >&2 <<EOF
 Error: The option --$k was expecting a value
 EOF
@@ -160,8 +157,6 @@ EOF
              v=$2
            fi
            add_property "$k" "$v"
-         else
-	   exit 1
 	 fi
 	 shift
          ;;
@@ -170,13 +165,13 @@ EOF
   esac
 done
 
-if [ $(has_property "version") = true ]; then
+if `has_property 'version'`; then
   version
   exit 0
 fi
 
-if [ $(has_property "help") = true ]; then
-  usage 
+if `has_property 'help'`; then
+  usage
   exit 0
 fi
 
@@ -191,25 +186,25 @@ for option in "${options[@]}"
 do
   if [[ $option =~ $re ]]; then
     optstring="$optstring${BASH_REMATCH[1]}"
-    if [ $(is_empty "${BASH_REMATCH[3]}") = false ]; then
+    if [ -n "${BASH_REMATCH[3]}" ]; then
       optstring="$optstring:"
     fi
   fi
 done
 
 optstring=$optstring"D:"
-err=$(getopt $optstring $ARGV 2>&1 > /dev/null)
-if [ $(is_empty "$err") != true ]; then
-  option=$(sed "s/.*'\(.*\)'/\1/" <<< $err)
-  if [ $(is_empty `grep -o "requires" <<< $err`) = false ]; then
+e=$(getopt $optstring $ARGV 2>&1 > /dev/null)
+if [ -n "$e" ]; then
+  o=$(sed "s/.*'\(.*\)'/\1/" <<< $e)
+  if [ -n "`grep -o "requires" <<< $e`" ]; then
     cat >&2 <<EOF
-Error: The option --$option was expecting a value
+Error: The option -$o was expecting a value
 EOF
     exit 1
   fi
   
   cat >&2 <<EOF
-Error: You're passing the invalid option -$option to the script
+Error: You're passing the invalid option -$o to the script
 EOF
   exit 1
 fi
@@ -241,13 +236,10 @@ while true; do
 	;;
      *)
         k="${1#-}"
-        option=$(get_option "$k" true)
-        if [[ $option =~ $re ]]; then
+        if [[ $(get_option "$k" 'true') =~ $re ]]; then
 	  k="${BASH_REMATCH[2]}"
-	  ev="${BASH_REMATCH[3]}"
-	  
-	  if [ $(has_property "$k") = false ]; then
-            if [ $(is_empty "$ev") = false ]; then
+	  if ! `has_property "$k"`; then
+            if [ -n "${BASH_REMATCH[3]}" ]; then
 	      add_property "$k" "$2"
 	      shift 2
 	    else
@@ -263,5 +255,4 @@ while true; do
 done
 
 run "$daemon" "$properties"
-
 exit $?

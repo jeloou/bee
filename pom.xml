@@ -58,6 +58,7 @@
       </resource>
     </resources>
     <plugins>
+      
       <plugin>
 	<groupId>org.apache.maven.plugins</groupId>
 	<artifactId>maven-compiler-plugin</artifactId>
@@ -80,7 +81,7 @@
 	</execution>
       </executions>
       <configuration>
-	<file>${project.basedir}/bin/${project.artifactId}</file>
+	<filesToInclude>${project.basedir}/bin/${project.artifactId}, ${project.basedir}/bin/${project.artifactId}.in.sh</filesToInclude>
 	<replacements>
 	  <replacement>
 	    <token>project.name</token>
@@ -99,6 +100,22 @@
 	  <delimiter>@</delimiter>
 	</delimiters>
       </configuration>
+    </plugin>
+    <plugin>
+      <artifactId>maven-dependency-plugin</artifactId>
+      <version>2.8</version>
+      <executions>
+	<execution>
+	  <phase>prepare-package</phase>
+	  <goals>
+	    <goal>copy-dependencies</goal>
+	  </goals>
+	  <configuration>
+	    <outputDirectory>${project.build.directory}/lib</outputDirectory>
+	    <includeScope>runtime</includeScope>
+	  </configuration>
+	</execution>
+      </executions>
     </plugin>
     </plugins>
   </build>
