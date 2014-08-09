@@ -30,7 +30,7 @@ public final class Server extends ServerAdapter implements Runnable {
     private Selector selector;
     private List<Worker> workers;
     private int current = 0;
-    private Collection<Client> clientsQueue;
+    private Collection<Client> clients;
 
     public class Worker extends Thread {
 	private BlockingQueue<Client> clientsQueue;
@@ -70,6 +70,7 @@ public final class Server extends ServerAdapter implements Runnable {
 	    this.workers.add(worker);
 	    worker.start();
 	}
+	clients = new ArrayList<Client>();
     }
 
     public Server(int port, int workers) {
@@ -121,7 +122,9 @@ public final class Server extends ServerAdapter implements Runnable {
 	    selector = Selector.open();
 	    server.register(selector, server.validOps());
 	} catch(IOException e) {
-	    System.out.println("exception:0");
+	    System.err.println(e);
+	    System.err.flush();
+	    System.exit(1);
 	    return;
 	}
 	
@@ -143,7 +146,7 @@ public final class Server extends ServerAdapter implements Runnable {
 			}
 			
 			if (key.isAcceptable()) {
-			    System.out.println("isAcceptable"); 
+			    System.out.println("isAcceptable");
 			    
 			    SocketChannel channel = server.accept();
 			    channel.configureBlocking(false);
@@ -183,6 +186,7 @@ public final class Server extends ServerAdapter implements Runnable {
 				worker.clientsQueue.put(client);
 			    } else {
 				System.out.println("EOT");
+				client.close();
 			    }
 			    
 			    i.remove();
@@ -224,20 +228,22 @@ public final class Server extends ServerAdapter implements Runnable {
 		}
 	    }
 	} catch (RuntimeException e) {
-	    System.out.println("exception:2");
+	    System.err.println(e);
+	    System.err.flush();
+	    System.exit(1);
 	    return;
 	}
     }
     
     protected boolean addClient(Client client) {
-	synchronized(clientsQueue) {
-	    return this.clientsQueue.add(client);
+	synchronized(clients) {
+	    return clients.add(client);
 	}
     }
 
     protected boolean removeClient(Client client) {
-	synchronized(clientsQueue) {
-	    return this.clientsQueue.remove(client);
+	synchronized(clients) {
+	    return clients.remove(client);
 	}
     }
 
@@ -250,7 +256,9 @@ public final class Server extends ServerAdapter implements Runnable {
 
     @Override
     public final void onClientDisconnect(Client client) {
-	
+	if (removeClient(client)) {
+	    //onDisconnect(client);
+	}
     }
 
     @Override

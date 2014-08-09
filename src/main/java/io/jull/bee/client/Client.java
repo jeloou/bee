@@ -1,5 +1,6 @@
 package io.jull.bee.client;
 
+import java.io.IOException;
 import java.nio.channels.ByteChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.ByteBuffer;
@@ -28,6 +29,27 @@ public class Client implements ClientInterface {
 	this.listener = listener;
 	inQueue = new LinkedBlockingQueue<ByteBuffer>();
 	outQueue = new LinkedBlockingQueue<ByteBuffer>();
+    }
+    
+    public synchronized void close() {
+	if (status == STATUSES.CLOSED) {
+	    return;
+	}
+
+	if (key != null) {
+	    key.cancel();
+	}
+
+	if (channel != null) {
+	    try {
+		channel.close();
+	    } catch (IOException e) {
+		return;
+	    }
+	}
+	
+	listener.onClientDisconnect(this);
+	status = STATUSES.CLOSED;
     }
     
     public void parse(ByteBuffer buffer) {
