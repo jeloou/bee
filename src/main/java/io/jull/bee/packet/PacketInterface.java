@@ -1,7 +1,12 @@
 package io.jull.bee.packet;
 
 public interface PacketInterface {
-    public enum TYPES {
-	CONNECT, DISCONNECT, SUBSCRIBE, UNSUBSCRIBE, PUBLISH
+    public enum Type {
+	CONNECT, CONNACK, PUBLISH, PUBACK,
+        PUBREC, PUBREL, PUBCOMP, SUBSCRIBE,
+        SUBACK, UNSUBSCRIBE, UNSUBACK, PINGREQ,
+        PINRESP, DISCONNECT
     }
+    
+    public static Type[] TypeValues = Type.values();
 }
