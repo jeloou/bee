@@ -14,6 +14,12 @@ public interface PacketInterface {
     public static List<Type> TypeValues = Arrays.asList(Type.values());
     
     public class Mask {
+	public static byte DUPLICATE = 0x01;
+	public static byte RETAIN = 0x01;
+	public static byte QOS = 0x03;
+    }
+    
+    public class OrMask {
 	public static byte DUPLICATE = 0x08;
 	public static byte RETAIN = 0x01;
     }
@@ -21,6 +27,7 @@ public interface PacketInterface {
     public class Shift {
 	public static byte TYPE = 0X04;
 	public static byte QOS = 0x01;
+	public static byte DUPLICATE = 0x03;
     }
 
     public class ReturnCode {

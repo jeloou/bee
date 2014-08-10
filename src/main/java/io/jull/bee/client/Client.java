@@ -76,10 +76,10 @@ public class Client implements ClientInterface {
 	case CONNECT:
 	    handleConnect();
 	    break;
-	/*
 	case DISCONNECT:
-           handleDisconnect(packet);
-           break;
+	    handleDisconnect();
+	    break;
+	/*
         case Packet.TYPES.SUBSCRIBE:
            handleSubcribe(packet);
            break;
@@ -99,7 +99,7 @@ public class Client implements ClientInterface {
 	if (status != STATUSES.NOT_CONNECTED) {
 	    return;
 	}
-
+	
 	status = STATUSES.CONNECTED;
 	clientId = packet.getClientId();
 	
@@ -118,10 +118,12 @@ public class Client implements ClientInterface {
 	packet = null;
     }
     
-    private void handleDisconnect(Packet packet) {
+    private void handleDisconnect() {
 	if (status != STATUSES.CONNECTED) {
 	    return;
 	}
+
+	close();
     }
     
     private void send(Packet packet) {

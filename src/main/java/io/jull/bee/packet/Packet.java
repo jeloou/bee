@@ -76,23 +76,29 @@ public class Packet implements PacketInterface {
 	if (isNew()) {
 	    byte fixed = buffer.get();
 	    
-	    int type = ((int)fixed >> Shift.TYPE);
+	    int type = (fixed & 0xff) >>> Shift.TYPE;
 	    if (type < 1 || type > TypeValues.size() - 1) {
 		complete = true;
 		return;
 	    }
 	    this.type = TypeValues.get(type);
 	    
-	    if ((int)((fixed >> 3) & 0x1) > 0) {
-		duplicate = true;
+	    if (needsQoS()) {
+		qos = (fixed >> Shift.QOS) & Mask.QOS;
+		
+		if (qos > 0) {
+		    if (((fixed >> Shift.DUPLICATE) & Mask.DUPLICATE) > 0) {
+			duplicate = true;
+		    }
+		}
 	    }
-
-	    qos = (int)((fixed >> 1) & 0xf0);
 	    
-	    if ((int)(fixed & 0x1) > 0) {
-		retain = true;
+	    if (this.type == Type.PUBLISH) {
+		if ((fixed & Mask.RETAIN) > 0) {
+		    retain = true;
+		}
 	    }
-
+	    
 	    int m = 1;
 	    do {
 		fixed = buffer.get();
@@ -104,6 +110,9 @@ public class Packet implements PacketInterface {
 	switch(getType()) {
 	case CONNECT:
 	    parseConnect(buffer);
+	    break;
+	case DISCONNECT:
+	    parseDisconnect(buffer);
 	    break;
 	default:
 	    break;
@@ -157,6 +166,22 @@ public class Packet implements PacketInterface {
 	valid = true;
     }
     
+    private void parseDisconnect(ByteBuffer buffer) {
+	complete = true;
+	valid = true;
+    }
+    
+    private boolean needsQoS() {
+	if (type == Type.PUBLISH || type == Type.PUBREL || type == Type.SUBSCRIBE || type == Type.UNSUBSCRIBE) {
+	    return true;
+	}
+	return false;
+    }
+    
+    private boolean isNew() {
+	return isnew;
+    }
+    
     public Type getType() {
 	return type;
     }
@@ -167,10 +192,6 @@ public class Packet implements PacketInterface {
     
     public boolean isValid() {
 	return valid;
-    }
-    
-    public boolean isNew() {
-	return isnew;
     }
     
     public boolean hasUsername() {
@@ -200,13 +221,13 @@ public class Packet implements PacketInterface {
 	fixed |= (TypeValues.indexOf(type) << Shift.TYPE);
 	
 	if (duplicate)
-	    fixed |= Mask.DUPLICATE;
+	    fixed |= OrMask.DUPLICATE;
 	
 	if (qos > 0)
 	    fixed |= (qos << Shift.QOS);
 	
 	if (retain)
-	    fixed |= Mask.RETAIN;
+	    fixed |= OrMask.RETAIN;
 	
 	length = variable.length;
 	if (hasPayload()) {
