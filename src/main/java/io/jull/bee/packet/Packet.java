@@ -30,13 +30,24 @@ public class Packet implements PacketInterface {
     private byte[] willMessage;
     
     private int remaining;
-    private Collection<ByteBuffer> buffers;
-    
+    private byte[] variable;
+    private Collection<ByteBuffer> payload;
+
+    private boolean isnew = true;
     private boolean complete;
     private boolean valid;
+
+    public Packet(Type type, boolean duplicate, short qos, boolean retain, byte[] variable) {
+	this.type = type;
+	this.duplicate = duplicate;
+	this.qos = qos;
+	this.retain = retain;
+	this.variable = variable;
+	isnew = false;
+    }
     
     public Packet() {
-	buffers = new ArrayList<ByteBuffer>();
+	payload = new ArrayList<ByteBuffer>();
     }
 
     private String getString(ByteBuffer buffer, short length) {
@@ -61,23 +72,16 @@ public class Packet implements PacketInterface {
 	return getBytes(buffer, buffer.getShort());
     }
     
-    private short getShort(ByteBuffer buffer) {
-	byte[] bytes = new byte[2];
-	
-	buffer.get(bytes);
-	return ByteBuffer.wrap(bytes).getShort();
-    }
-    
     public void parse(ByteBuffer buffer) {
-	if (buffers.isEmpty()) {
+	if (isNew()) {
 	    byte fixed = buffer.get();
 	    
-	    int type = ((int)fixed >> 4)-1;
-	    if (type < 0 || type > TypeValues.length - 1) {
+	    int type = ((int)fixed >> Shift.TYPE);
+	    if (type < 1 || type > TypeValues.size() - 1) {
 		complete = true;
 		return;
 	    }
-	    this.type = TypeValues[type];
+	    this.type = TypeValues.get(type);
 	    
 	    if ((int)((fixed >> 3) & 0x1) > 0) {
 		duplicate = true;
@@ -104,6 +108,8 @@ public class Packet implements PacketInterface {
 	default:
 	    break;
 	}
+
+	isnew = false;
     }
     
     private void parseConnect(ByteBuffer buffer) {
@@ -146,6 +152,9 @@ public class Packet implements PacketInterface {
 	if (((flags & 0x40) >> 6) > 0) {
 	    password = getString(buffer);
 	}
+
+	complete = true;
+	valid = true;
     }
     
     public Type getType() {
@@ -158,5 +167,84 @@ public class Packet implements PacketInterface {
     
     public boolean isValid() {
 	return valid;
+    }
+    
+    public boolean isNew() {
+	return isnew;
+    }
+    
+    public boolean hasUsername() {
+	return username != null;
+    }
+    
+    public String getUsername() {
+	return username;
+    }
+    
+    public boolean hasPassword() {
+	return password != null;
+    }
+
+    public String getPassword() {
+	return password;
+    }
+    
+    public String getClientId() {
+	return clientId;
+    }
+    
+    public ByteBuffer toBuffer() {
+	byte fixed = 0x00;
+	int length;
+	
+	fixed |= (TypeValues.indexOf(type) << Shift.TYPE);
+	
+	if (duplicate)
+	    fixed |= Mask.DUPLICATE;
+	
+	if (qos > 0)
+	    fixed |= (qos << Shift.QOS);
+	
+	if (retain)
+	    fixed |= Mask.RETAIN;
+	
+	length = variable.length;
+	if (hasPayload()) {
+	    for (ByteBuffer buffer : getPayload()) {
+		length += buffer.limit();
+	    }
+	}
+	
+	int l = length, d;
+	byte[] remaining = new byte[4];
+	short i = 0;
+	
+	do {
+	    d = l % 128;
+	    l = l / 128;
+	
+	    if (l > 0) {
+		d |= 0x80;
+	    }
+	    
+	    remaining[i] = (byte)d;
+	    i++;
+	} while (l > 0);
+	
+	ByteBuffer buffer = ByteBuffer.allocate(1 + i + length);
+	buffer.put(fixed);
+	buffer.put(remaining, 0, i);
+	buffer.put(variable);
+	buffer.flip();
+
+	return buffer;
+    }
+    
+    public boolean hasPayload() {
+	return payload != null && !payload.isEmpty();
+    }
+
+    public Collection<ByteBuffer> getPayload() {
+	return payload;
     }
 }

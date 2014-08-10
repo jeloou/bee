@@ -4,7 +4,8 @@ import java.io.IOException;
 import java.nio.channels.ByteChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.ByteBuffer;
-import java.util.List;
+
+import java.util.Collection;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -14,6 +15,11 @@ import io.jull.bee.packet.PacketFactory;
 import io.jull.bee.packet.Packet;
 
 public class Client implements ClientInterface {
+    private String clientId;
+    
+    private String username;
+    private String password;
+    
     public ByteChannel channel;
     public SelectionKey key;
     public Worker worker;
@@ -68,7 +74,7 @@ public class Client implements ClientInterface {
 	
 	switch (packet.getType()) {
 	case CONNECT:
-	    handleConnect(packet);
+	    handleConnect();
 	    break;
 	/*
 	case DISCONNECT:
@@ -89,19 +95,27 @@ public class Client implements ClientInterface {
 	}
     }
     
-    private void handleConnect(Packet packet) {
+    private void handleConnect() {
 	if (status != STATUSES.NOT_CONNECTED) {
 	    return;
 	}
-	/*
-	write(PacketFactory.createConnack());
+
 	status = STATUSES.CONNECTED;
-	try {
-	    listener.onClientConnected(this, packet);
-	} catch(RuntimeException e) {
-	    listener.onClientError(this, e);
+	clientId = packet.getClientId();
+	
+	if (packet.hasUsername() && packet.hasPassword()) {
+	    username = packet.getUsername();
+	    password = packet.getPassword();
 	}
-	*/
+	
+	send(PacketFactory.createConnack());
+	try {
+	    listener.onClientConnect(this, packet);
+	} catch(RuntimeException e) {
+	    
+	}
+	
+	packet = null;
     }
     
     private void handleDisconnect(Packet packet) {
@@ -110,14 +124,14 @@ public class Client implements ClientInterface {
 	}
     }
     
-    private void write(ByteBuffer buffer) {
-	outQueue.add(buffer);
-	listener.onClientWriteDemand(this);
-    }
-    
-    private void write(List<ByteBuffer> buffers) {
-	for (ByteBuffer buffer: buffers) {
-	    write(buffer);
+    private void send(Packet packet) {
+	outQueue.add(packet.toBuffer());
+	if (packet.hasPayload()) {
+	    for (ByteBuffer buffer : packet.getPayload()) {
+		outQueue.add(packet.toBuffer());
+	    }
 	}
+	
+	listener.onClientWriteDemand(this);
     }
 }

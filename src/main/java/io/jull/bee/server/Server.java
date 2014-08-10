@@ -19,6 +19,7 @@ import java.util.Set;
 import java.util.List;
 
 import io.jull.bee.client.Client;
+import io.jull.bee.packet.Packet;
 
 public final class Server extends ServerAdapter implements Runnable {
     
@@ -196,7 +197,6 @@ public final class Server extends ServerAdapter implements Runnable {
 			if (key.isWritable()) {
 			    System.out.println("isWritable");
 			    
-			    /*
 			    client = (Client) key.attachment();
 			    ByteBuffer buffer = client.outQueue.peek();
 			    do {
@@ -205,14 +205,13 @@ public final class Server extends ServerAdapter implements Runnable {
 				    continue;
 				}
 				
-				ws.outQueue.poll();
+				client.outQueue.poll();
 				buffer = client.outQueue.peek();
 			    } while (buffer != null);
 			    
 			    if (key.isValid()) {
 				key.interestOps(SelectionKey.OP_READ);
 			    }
-			    */
 			    
 			    i.remove();
 			    continue;
@@ -248,9 +247,9 @@ public final class Server extends ServerAdapter implements Runnable {
     }
 
     @Override
-    public final void onClientConnect(Client client) {
+    public final void onClientConnect(Client client, Packet packet) {
 	if (addClient(client)) {
-	    //onConnect(client);
+	    //onConnect(client, packet);
 	}
     }
 
@@ -266,7 +265,7 @@ public final class Server extends ServerAdapter implements Runnable {
 	try {
 	    client.key.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
 	} catch (CancelledKeyException e) {
-	    client.outQueue.clear();	    
+	    client.outQueue.clear();
 	}
 	selector.wakeup();
     }
