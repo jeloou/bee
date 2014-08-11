@@ -131,6 +131,10 @@ public class Packet implements PacketInterface {
 	}
 	
 	version = (short)buffer.get();
+	if (version != 3) {
+	    complete = true;
+	    return;
+	}
 	
 	byte flags = buffer.get();
 	will = ((flags >> 2) & 0x01) > 0;
@@ -212,6 +216,10 @@ public class Packet implements PacketInterface {
     
     public String getClientId() {
 	return clientId;
+    }
+    
+    public boolean getClean() {
+	return clean;
     }
     
     public ByteBuffer toBuffer() {

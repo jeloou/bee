@@ -14,7 +14,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.Collection;
 import java.util.Set;
 import java.util.List;
 
@@ -31,7 +30,7 @@ public final class Server extends ServerAdapter implements Runnable {
     private Selector selector;
     private List<Worker> workers;
     private int current = 0;
-    private Collection<Client> clients;
+    private List<Client> clients;
 
     public class Worker extends Thread {
 	private BlockingQueue<Client> clientsQueue;
@@ -236,6 +235,17 @@ public final class Server extends ServerAdapter implements Runnable {
     
     protected boolean addClient(Client client) {
 	synchronized(clients) {
+	    if (!clients.contains(client)) {
+		return clients.add(client);
+	    }
+	    
+	    int i = clients.indexOf(client);
+	    Client cl = clients.get(i);
+	    if (cl.isConnected()) {
+		cl.close();
+	    }
+	    
+	    clients.remove(cl);
 	    return clients.add(client);
 	}
     }

@@ -19,6 +19,7 @@ public class Client implements ClientInterface {
     
     private String username;
     private String password;
+    private boolean clean;
     
     public ByteChannel channel;
     public SelectionKey key;
@@ -28,7 +29,7 @@ public class Client implements ClientInterface {
     public BlockingQueue<ByteBuffer> outQueue;
     
     private ServerListener listener;
-    private STATUSES status = STATUSES.NOT_CONNECTED;
+    private Status status = Status.NOT_CONNECTED;
     private Packet packet;
     
     public Client(ServerListener listener) {
@@ -37,8 +38,26 @@ public class Client implements ClientInterface {
 	outQueue = new LinkedBlockingQueue<ByteBuffer>();
     }
     
+    @Override 
+    public boolean equals(Object o) {
+	if (o == null) {
+	    return false;
+	}
+	
+	if (o == this) {
+	    return true;
+	}
+	
+	if (!(o instanceof Client)) {
+	    return false;
+	}
+
+	Client client = (Client)o;
+	return (client.clientId.equals(clientId));
+    }
+    
     public synchronized void close() {
-	if (status == STATUSES.CLOSED) {
+	if (status == Status.DISCONNECTED) {
 	    return;
 	}
 
@@ -53,9 +72,9 @@ public class Client implements ClientInterface {
 		return;
 	    }
 	}
-	
+
+	status = Status.DISCONNECTED;
 	listener.onClientDisconnect(this);
-	status = STATUSES.CLOSED;
     }
     
     public void parse(ByteBuffer buffer) {
@@ -96,12 +115,12 @@ public class Client implements ClientInterface {
     }
     
     private void handleConnect() {
-	if (status != STATUSES.NOT_CONNECTED) {
+	if (status != Status.NOT_CONNECTED)
 	    return;
-	}
 	
-	status = STATUSES.CONNECTED;
+	status = Status.CONNECTED;
 	clientId = packet.getClientId();
+	clean = packet.getClean();
 	
 	if (packet.hasUsername() && packet.hasPassword()) {
 	    username = packet.getUsername();
@@ -119,10 +138,10 @@ public class Client implements ClientInterface {
     }
     
     private void handleDisconnect() {
-	if (status != STATUSES.CONNECTED) {
+	if (status != Status.CONNECTED) {
 	    return;
 	}
-
+	
 	close();
     }
     
@@ -135,5 +154,13 @@ public class Client implements ClientInterface {
 	}
 	
 	listener.onClientWriteDemand(this);
+    }
+
+    public synchronized boolean isConnected() {
+	return (status == Status.CONNECTED);
+    }
+    
+    public boolean getClean() {
+	return clean;
     }
 }
