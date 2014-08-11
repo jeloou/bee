@@ -33,10 +33,11 @@ public class Packet implements PacketInterface {
     private byte[] variable;
     private Collection<ByteBuffer> payload;
 
+    private int returnCode;
     private boolean isnew = true;
     private boolean complete;
     private boolean valid;
-
+    
     public Packet(Type type, boolean duplicate, short qos, boolean retain, byte[] variable) {
 	this.type = type;
 	this.duplicate = duplicate;
@@ -132,6 +133,7 @@ public class Packet implements PacketInterface {
 	
 	version = (short)buffer.get();
 	if (version != 3) {
+	    returnCode = ReturnCode.UNACCEPTABLE_VERSION;
 	    complete = true;
 	    return;
 	}
@@ -148,6 +150,7 @@ public class Packet implements PacketInterface {
 
 	length = buffer.getShort();
 	if (length < 1 || length > 23) {
+	    returnCode = ReturnCode.ID_REJECTED;
 	    complete = true;
 	    return;
 	}
@@ -165,7 +168,8 @@ public class Packet implements PacketInterface {
 	if (((flags & 0x40) >> 6) > 0) {
 	    password = getString(buffer);
 	}
-
+	
+	returnCode = ReturnCode.ACCEPTED;
 	complete = true;
 	valid = true;
     }
@@ -220,6 +224,10 @@ public class Packet implements PacketInterface {
     
     public boolean getClean() {
 	return clean;
+    }
+    
+    public int getReturnCode() {
+	return returnCode;
     }
     
     public ByteBuffer toBuffer() {

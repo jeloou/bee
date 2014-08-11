@@ -86,7 +86,7 @@ public class Client implements ClientInterface {
 	
 	if (!packet.isComplete() || !packet.isValid()) {
 	    if (!packet.isValid()) {
-		// handle an invalid packet
+		handleInvalidPacket();
 	    }
 	    return;
 	}
@@ -143,6 +143,13 @@ public class Client implements ClientInterface {
 	}
 	
 	close();
+    }
+    
+    private void handleInvalidPacket() {
+	if (packet.getType() == Packet.Type.CONNECT) {
+	    send(PacketFactory.createConnack(packet.getReturnCode()));
+	    return;
+	}
     }
     
     private void send(Packet packet) {
