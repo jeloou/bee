@@ -63,7 +63,29 @@ public class Packet extends AbstractClient implements PacketInterface {
     }
     
     private byte[] getBytes(ByteBuffer buffer) {
-	return getBytes(buffer, buffer.getShort());
+	return getBytes(buffer, getShort(buffer));
+    }
+    
+    private int getShort(ByteBuffer buffer) {
+	byte[] bytes = getBytes(buffer, 2);
+	return ((bytes[0] << 8) & 0xff00) | (bytes[1] & 0xff);
+    }
+    
+    private int calcRemaining(ByteBuffer buffer) {
+	int m = 1, r = 0;
+	byte b;
+	
+	do {
+	    b = buffer.get();
+	    r += (b & 0x7f) * m;
+	    m *= 0x80;
+	} while ((b & 0x80) > 0);
+
+	return r;
+    }
+    
+    private void skip(ByteBuffer buffer, int n) {
+	buffer.position(buffer.position() + n);
     }
     
     public void parse(ByteBuffer buffer) {
@@ -93,12 +115,9 @@ public class Packet extends AbstractClient implements PacketInterface {
 		}
 	    }
 	    
-	    int m = 1;
-	    do {
-		fixed = buffer.get();
-		remaining += ((int)(fixed & 0x7f) * m);
-		m *= 0x80;
-	    } while((fixed & 0x80) > 0);
+	    if (needsRemaining()) {
+		remaining = calcRemaining(buffer);
+	    }
 	}
 	
 	switch(getType()) {
@@ -124,7 +143,7 @@ public class Packet extends AbstractClient implements PacketInterface {
             return;
 	}
 	
-	version = (short)buffer.get();
+	version = getShort(buffer);
 	if (version != 3) {
 	    returnCode = ReturnCode.UNACCEPTABLE_VERSION;
 	    complete = true;
@@ -139,9 +158,9 @@ public class Packet extends AbstractClient implements PacketInterface {
 	}
 	
 	clean = ((flags >> 1) & 0x01 ) > 0;
-	keepAlive = buffer.getShort();
+	keepAlive = getShort(buffer);
 
-	length = buffer.getShort();
+	length = getShort(buffer);
 	if (length < 1 || length > 23) {
 	    returnCode = ReturnCode.ID_REJECTED;
 	    complete = true;
@@ -168,6 +187,7 @@ public class Packet extends AbstractClient implements PacketInterface {
     }
     
     private void parseDisconnect(ByteBuffer buffer) {
+	skip(buffer, 1);
 	complete = true;
 	valid = true;
     }
@@ -177,6 +197,13 @@ public class Packet extends AbstractClient implements PacketInterface {
 	    return true;
 	}
 	return false;
+    }
+    
+    private boolean needsRemaining() {
+	if (type == Type.PINGREQ || type == Type.PINGRESP || type == Type.DISCONNECT) {
+	    return false;
+	}
+	return true;
     }
     
     private boolean isNew() {

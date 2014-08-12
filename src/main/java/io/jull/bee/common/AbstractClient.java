@@ -2,20 +2,20 @@ package io.jull.bee.common;
 
 public abstract class AbstractClient {
     protected String protocol;
-    protected short version;
+    protected int version;
     
     protected String clientId;
     protected String username;
     protected String password;
     
-    protected short keepAlive;
+    protected int keepAlive;
     protected boolean clean;
     
     public String getProtocol() {
         return protocol;
     }
     
-    public short getVersion() {
+    public int getVersion() {
         return version;
     }
     
@@ -31,7 +31,7 @@ public abstract class AbstractClient {
 	return password;
     }
 
-    public short getKeepAlive() {
+    public int getKeepAlive() {
 	return keepAlive;
     }
     
