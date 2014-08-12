@@ -8,7 +8,7 @@ public interface PacketInterface {
 	RESERVED, CONNECT, CONNACK, PUBLISH, PUBACK,
         PUBREC, PUBREL, PUBCOMP, SUBSCRIBE,
         SUBACK, UNSUBSCRIBE, UNSUBACK, PINGREQ,
-	PINRESP, DISCONNECT
+	PINGRESP, DISCONNECT
     }
     
     public static List<Type> TypeValues = Arrays.asList(Type.values());
