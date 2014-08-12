@@ -6,25 +6,18 @@ import java.util.ArrayList;
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 
-public class Packet implements PacketInterface {
+import io.jull.bee.common.AbstractClient;
+
+public class Packet extends AbstractClient implements PacketInterface {
     private Type type;
     
     private boolean duplicate;
     private boolean retain;
     private int qos;
-
-    private String protocol;
-    private short version;
-
-    private String clientId;
-    private String username;
-    private String password;
     
     private boolean will;
     private boolean willRetain;
     private int willQos;
-    private boolean clean;
-    private short keepAlive;
     
     private String willTopic;
     private byte[] willMessage;
@@ -200,30 +193,6 @@ public class Packet implements PacketInterface {
     
     public boolean isValid() {
 	return valid;
-    }
-    
-    public boolean hasUsername() {
-	return username != null;
-    }
-    
-    public String getUsername() {
-	return username;
-    }
-    
-    public boolean hasPassword() {
-	return password != null;
-    }
-
-    public String getPassword() {
-	return password;
-    }
-    
-    public String getClientId() {
-	return clientId;
-    }
-    
-    public boolean getClean() {
-	return clean;
     }
     
     public int getReturnCode() {

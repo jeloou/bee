@@ -186,7 +186,7 @@ public final class Server extends ServerAdapter implements Runnable {
 				worker.clientsQueue.put(client);
 			    } else {
 				System.out.println("EOT");
-				client.close();
+				client.end();
 			    }
 			    
 			    i.remove();
@@ -233,8 +233,25 @@ public final class Server extends ServerAdapter implements Runnable {
 	}
     }
     
+    private boolean authenticate(Client client, String username, String password) {
+	return true;
+    }
+    
+    private boolean authorizeSubscribe(Client client, String topic) {
+	return true;
+    }
+    
+    private boolean authorizePublish(Client client, String topic, ByteBuffer[] payload) {
+	return true;
+    }
+    
     protected boolean addClient(Client client) {
 	synchronized(clients) {
+	    if (!authenticate(client, client.getUsername(), client.getPassword())) {
+		client.end();
+		return false;
+	    }
+	    
 	    if (!clients.contains(client)) {
 		return clients.add(client);
 	    }
@@ -242,17 +259,22 @@ public final class Server extends ServerAdapter implements Runnable {
 	    int i = clients.indexOf(client);
 	    Client cl = clients.get(i);
 	    if (cl.isConnected()) {
-		cl.close();
+		cl.end(false);
 	    }
 	    
 	    clients.remove(cl);
 	    return clients.add(client);
 	}
     }
-
+    
     protected boolean removeClient(Client client) {
 	synchronized(clients) {
-	    return clients.remove(client);
+	    int i = clients.indexOf(client);
+	    if (client == clients.get(i)) {
+		return clients.remove(client);
+	    }
+	    
+	    return false;
 	}
     }
 
@@ -270,6 +292,20 @@ public final class Server extends ServerAdapter implements Runnable {
 	}
     }
 
+    @Override
+    public final void onClientSubscribe(Client client, String topic) {
+	if (!authorizeSubscribe(client, topic)) {
+	    return;
+	}
+    }
+    
+    @Override
+    public final void onClientPublish(Client client, String topic, ByteBuffer[] payload) {
+	if (!authorizePublish(client, topic, payload)) {
+	    return;
+	}
+    }
+    
     @Override
     public final void onClientWriteDemand(Client client) {
 	try {

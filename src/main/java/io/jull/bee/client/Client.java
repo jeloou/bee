@@ -9,18 +9,13 @@ import java.util.Collection;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
+import io.jull.bee.common.AbstractClient;
 import io.jull.bee.server.Server.Worker;
 import io.jull.bee.server.ServerListener;
 import io.jull.bee.packet.PacketFactory;
 import io.jull.bee.packet.Packet;
 
-public class Client implements ClientInterface {
-    private String clientId;
-    
-    private String username;
-    private String password;
-    private boolean clean;
-    
+public class Client extends AbstractClient implements ClientInterface {
     public ByteChannel channel;
     public SelectionKey key;
     public Worker worker;
@@ -54,27 +49,6 @@ public class Client implements ClientInterface {
 
 	Client client = (Client)o;
 	return (client.clientId.equals(clientId));
-    }
-    
-    public synchronized void close() {
-	if (status == Status.DISCONNECTED) {
-	    return;
-	}
-
-	if (key != null) {
-	    key.cancel();
-	}
-
-	if (channel != null) {
-	    try {
-		channel.close();
-	    } catch (IOException e) {
-		return;
-	    }
-	}
-
-	status = Status.DISCONNECTED;
-	listener.onClientDisconnect(this);
     }
     
     public void parse(ByteBuffer buffer) {
@@ -118,22 +92,24 @@ public class Client implements ClientInterface {
 	if (status != Status.NOT_CONNECTED)
 	    return;
 	
-	status = Status.CONNECTED;
+	protocol = packet.getProtocol();
+	version = packet.getVersion();
+	
 	clientId = packet.getClientId();
+	username = packet.getUsername();
+	password = packet.getPassword();
+
+	keepAlive = packet.getKeepAlive();
 	clean = packet.getClean();
 	
-	if (packet.hasUsername() && packet.hasPassword()) {
-	    username = packet.getUsername();
-	    password = packet.getPassword();
-	}
-	
-	send(PacketFactory.createConnack());
 	try {
 	    listener.onClientConnect(this, packet);
 	} catch(RuntimeException e) {
 	    
 	}
-	
+
+	status = Status.CONNECTED;
+	send(PacketFactory.createConnack());
 	packet = null;
     }
     
@@ -142,7 +118,7 @@ public class Client implements ClientInterface {
 	    return;
 	}
 	
-	close();
+	end();
     }
     
     private void handleInvalidPacket() {
@@ -162,12 +138,38 @@ public class Client implements ClientInterface {
 	
 	listener.onClientWriteDemand(this);
     }
-
-    public synchronized boolean isConnected() {
-	return (status == Status.CONNECTED);
+    
+    public void end() {
+	end(true);
     }
     
-    public boolean getClean() {
-	return clean;
+    public void end(boolean callback) {
+	synchronized(this) {
+	    if (status == Status.DISCONNECTED) {
+		return;
+	    }
+	    
+	    if (key != null) {
+		key.cancel();
+	    }
+	    
+	    if (channel != null) {
+		try {
+		    channel.close();
+		} catch (IOException e) {
+		    return;
+		}
+	    }
+	    
+	    status = Status.DISCONNECTED;
+	}
+	
+	if (callback) {
+	    listener.onClientDisconnect(this);
+	}
+    }
+    
+    public synchronized boolean isConnected() {
+	return (status == Status.CONNECTED);
     }
 }
