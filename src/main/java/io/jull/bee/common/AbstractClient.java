@@ -1,5 +1,7 @@
 package io.jull.bee.common;
 
+import java.util.Map;
+
 public abstract class AbstractClient {
     protected String protocol;
     protected int version;
@@ -10,6 +12,8 @@ public abstract class AbstractClient {
     
     protected int keepAlive;
     protected boolean clean;
+
+    protected Map<String, Integer> topics;
     
     public String getProtocol() {
         return protocol;
@@ -37,5 +41,9 @@ public abstract class AbstractClient {
     
     public boolean getClean() {
 	return clean;
+    }
+
+    public Map<String, Integer> getTopics() {
+	return topics;
     }
 }

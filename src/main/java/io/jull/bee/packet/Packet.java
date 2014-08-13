@@ -1,7 +1,9 @@
 package io.jull.bee.packet;
 
-import java.util.Collection;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.ArrayList;
+import java.util.Collection;
 
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
@@ -9,6 +11,7 @@ import java.nio.charset.Charset;
 import io.jull.bee.common.AbstractClient;
 
 public class Packet extends AbstractClient implements PacketInterface {
+    private int id;
     private Type type;
     
     private boolean duplicate;
@@ -25,7 +28,7 @@ public class Packet extends AbstractClient implements PacketInterface {
     private int remaining;
     private byte[] variable;
     private Collection<ByteBuffer> payload;
-
+    
     private int returnCode;
     private boolean isnew = true;
     private boolean complete;
@@ -44,21 +47,25 @@ public class Packet extends AbstractClient implements PacketInterface {
 	payload = new ArrayList<ByteBuffer>();
     }
 
-    private String getString(ByteBuffer buffer, short length) {
-	byte[] bytes = new byte[length];
-	
-	buffer.get(bytes);
+    private String getString(ByteBuffer buffer, int length) {
+	byte[] bytes = getBytes(buffer, length);
 	return new String(bytes, Charset.forName("UTF-8"));
     }
 
     private String getString(ByteBuffer buffer) {
-	return getString(buffer, buffer.getShort());
+	return getString(buffer, getShort(buffer));
     }
     
-    private byte[] getBytes(ByteBuffer buffer, short length) {
+    private byte getByte(ByteBuffer buffer) {
+	remaining--;
+	return buffer.get();
+    }
+    
+    private byte[] getBytes(ByteBuffer buffer, int length) {
 	byte[] bytes = new byte[length];
 	
 	buffer.get(bytes);
+	remaining -= length;
 	return bytes;
     }
     
@@ -127,15 +134,18 @@ public class Packet extends AbstractClient implements PacketInterface {
 	case DISCONNECT:
 	    parseDisconnect(buffer);
 	    break;
+	case SUBSCRIBE:
+	    parseSubscribe(buffer);
+	    break;
 	default:
 	    break;
 	}
-
+	
 	isnew = false;
     }
     
     private void parseConnect(ByteBuffer buffer) {
-	short length;
+	int length;
 	
 	protocol = getString(buffer);
 	if (!protocol.equals("MQIsdp")) {
@@ -143,21 +153,21 @@ public class Packet extends AbstractClient implements PacketInterface {
             return;
 	}
 	
-	version = getShort(buffer);
+	version = getByte(buffer) & 0xff;
 	if (version != 3) {
 	    returnCode = ReturnCode.UNACCEPTABLE_VERSION;
 	    complete = true;
 	    return;
 	}
 	
-	byte flags = buffer.get();
+	byte flags = getByte(buffer);
 	will = ((flags >> 2) & 0x01) > 0;
 	if (will) {
 	    willRetain = ((flags & 0x40) >> 6) > 0;
 	    willQos = (flags >> 3) & 0x03;
 	}
 	
-	clean = ((flags >> 1) & 0x01 ) > 0;
+	clean = (int)((flags >> 1) & 0x01 ) > 0;
 	keepAlive = getShort(buffer);
 
 	length = getShort(buffer);
@@ -167,7 +177,7 @@ public class Packet extends AbstractClient implements PacketInterface {
 	    return;
 	}
 	clientId = getString(buffer, length);
-	
+
 	if (will) {
 	    willTopic = getString(buffer);
 	    willMessage = getBytes(buffer);
@@ -188,6 +198,29 @@ public class Packet extends AbstractClient implements PacketInterface {
     
     private void parseDisconnect(ByteBuffer buffer) {
 	skip(buffer, 1);
+	complete = true;
+	valid = true;
+    }
+    
+    private void parseSubscribe(ByteBuffer buffer) {
+	String topic;
+	int qos;
+
+	topics = new HashMap<String, Integer>();
+	id = getShort(buffer);
+	
+	int length;
+	do {
+	    length = getShort(buffer);
+	    topic = getString(buffer, length);
+	    if (topic.length() < length) {
+		break;
+	    }
+	    
+	    qos = getByte(buffer) & 0xff;
+	    topics.put(topic, qos);
+	} while(remaining > 0);
+	
 	complete = true;
 	valid = true;
     }
