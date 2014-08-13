@@ -109,6 +109,11 @@ public class Packet extends AbstractClient implements PacketInterface {
 	    if (needsQoS()) {
 		qos = (fixed >> Shift.QOS) & Mask.QOS;
 		
+		if (qos > 2) {
+		    complete = true;
+		    return;
+		}
+		
 		if (qos > 0) {
 		    if (((fixed >> Shift.DUPLICATE) & Mask.DUPLICATE) > 0) {
 			duplicate = true;
@@ -218,6 +223,11 @@ public class Packet extends AbstractClient implements PacketInterface {
 	    }
 	    
 	    qos = getByte(buffer) & 0xff;
+	    if (qos > 1) {
+		complete = true;
+		return;
+	    }
+	    
 	    topics.put(topic, qos);
 	} while(remaining > 0);
 	

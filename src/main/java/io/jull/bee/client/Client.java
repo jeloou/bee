@@ -27,6 +27,8 @@ public class Client extends AbstractClient implements ClientInterface {
     private Status status = Status.NOT_CONNECTED;
     private Packet packet;
     
+    private boolean endAfter = false;
+    
     public Client(ServerListener listener) {
 	this.listener = listener;
 	inQueue = new LinkedBlockingQueue<ByteBuffer>();
@@ -123,9 +125,12 @@ public class Client extends AbstractClient implements ClientInterface {
     
     private void handleInvalidPacket() {
 	if (packet.getType() == Packet.Type.CONNECT) {
+	    endAfter = true;
 	    send(PacketFactory.createConnack(packet.getReturnCode()));
 	    return;
 	}
+	
+	end();
     }
     
     private void send(Packet packet) {
@@ -171,5 +176,9 @@ public class Client extends AbstractClient implements ClientInterface {
     
     public synchronized boolean isConnected() {
 	return (status == Status.CONNECTED);
+    }
+
+    public boolean getEndAfter() {
+	return endAfter;
     }
 }

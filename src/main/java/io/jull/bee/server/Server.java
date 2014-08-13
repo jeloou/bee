@@ -56,7 +56,9 @@ public final class Server extends ServerAdapter implements Runnable {
 		    client.parse(buffer);
 		} catch (InterruptedException e) {
 		} catch (RuntimeException e ) {
-		    System.out.println("worker exception");
+		    System.err.println(e.getMessage());
+		    System.err.flush();
+		    System.exit(1);
 		}
 	    }
 	}
@@ -207,6 +209,12 @@ public final class Server extends ServerAdapter implements Runnable {
 				client.outQueue.poll();
 				buffer = client.outQueue.peek();
 			    } while (buffer != null);
+			    
+			    if (client.getEndAfter()) {
+				client.end();
+				i.remove();
+				continue;
+			    }
 			    
 			    if (key.isValid()) {
 				key.interestOps(SelectionKey.OP_READ);
