@@ -74,10 +74,10 @@ public class Client extends AbstractClient implements ClientInterface {
 	case DISCONNECT:
 	    handleDisconnect();
 	    break;
+        case SUBSCRIBE:
+	    handleSubscribe();
+	    break;
 	/*
-        case Packet.TYPES.SUBSCRIBE:
-           handleSubcribe(packet);
-           break;
         case Packet.TYPES.UNSUBSCRIBE:
            handleUnsubcribe(packet);
            break;
@@ -123,6 +123,10 @@ public class Client extends AbstractClient implements ClientInterface {
 	end();
     }
     
+    private void handleSubscribe() {
+	
+    }
+    
     private void handleInvalidPacket() {
 	if (packet.getType() == Packet.Type.CONNECT) {
 	    endAfter = true;
@@ -133,15 +137,23 @@ public class Client extends AbstractClient implements ClientInterface {
 	end();
     }
     
-    private void send(Packet packet) {
-	outQueue.add(packet.toBuffer());
-	if (packet.hasPayload()) {
-	    for (ByteBuffer buffer : packet.getPayload()) {
-		outQueue.add(packet.toBuffer());
+    public void send(Packet packet, boolean callback) {
+	synchronized(this) {
+	    outQueue.add(packet.toBuffer());
+	    if (packet.hasPayload()) {
+		for (ByteBuffer buffer : packet.getPayload()) {
+		    outQueue.add(packet.toBuffer());
+		}
 	    }
 	}
 	
-	listener.onClientWriteDemand(this);
+	if (callback) {
+	    listener.onClientWriteDemand(this);
+	}
+    }
+    
+    public void send(Packet packet) {
+	send(packet, true);
     }
     
     public void end() {

@@ -269,6 +269,16 @@ public class Packet extends AbstractClient implements PacketInterface {
 	return returnCode;
     }
     
+    public void setQoS(int qos) {
+	if (qos > 0 && qos < 2) {
+	    this.qos = qos;
+	}
+    }
+    
+    public int getQoS() {
+	return qos;
+    }
+    
     public ByteBuffer toBuffer() {
 	byte fixed = 0x00;
 	int length;
