@@ -77,22 +77,19 @@ public class Client extends AbstractClient implements ClientInterface {
         case SUBSCRIBE:
 	    handleSubscribe();
 	    break;
-	/*
-        case Packet.TYPES.UNSUBSCRIBE:
-           handleUnsubcribe(packet);
-           break;
-	case Packet.TYPES.PUBLISH:
-	   handlePublish(packet);
-           break;
-	*/
+	case PUBLISH:
+	    handlePublish();
+	    break;
 	default:
 	    break;
 	}
     }
     
     private void handleConnect() {
-	if (status != Status.NOT_CONNECTED)
+	if (status != Status.NOT_CONNECTED) {
+	    end(false);
 	    return;
+	}
 	
 	protocol = packet.getProtocol();
 	version = packet.getVersion();
@@ -124,7 +121,13 @@ public class Client extends AbstractClient implements ClientInterface {
     }
     
     private void handleSubscribe() {
-	
+	listener.onClientSubscribe(this, packet);
+	packet = null;
+    }
+    
+    private void handlePublish() {
+	listener.onClientPublish(this, packet);
+	packet = null;
     }
     
     private void handleInvalidPacket() {

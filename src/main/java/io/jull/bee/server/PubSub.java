@@ -24,18 +24,16 @@ public class PubSub extends Thread {
 	
 	private Client client;
 	private Packet packet;
-	private String topic;
 	
-	public Job(Type type, Client client, String topic) {
+	public Job(Type type, Client client, Packet packet) {
 	    this.type = type;
 	    this.client = client;
-	    this.topic = topic;
+	    this.packet = packet;
 	}
 	
-	public Job(Type type, Packet packet, String topic) {
+	public Job(Type type, Packet packet) {
 	    this.type = type;
 	    this.packet = packet;
-	    this.topic = topic;
 	}
 
 	public Type getType() {
@@ -48,6 +46,7 @@ public class PubSub extends Thread {
 	private Map<Client, Integer> clients;
 	
 	public Topic(String topic) {
+	    clients = new HashMap<Client, Integer>();
 	    this.topic = topic;
 	}
     }
@@ -56,17 +55,32 @@ public class PubSub extends Thread {
     private Map<String, Topic> topics;
     
     public PubSub() {
+	jobsQueue = new LinkedBlockingQueue<Job>();
+	topics = new HashMap<String, Topic>();
+    }
+    
+    public void subscribe(Client client, Packet packet) {
+	Job job = new Job(Job.Type.SUBSCRIBE, client, packet);
 	
+	try {
+	    jobsQueue.put(job);
+	} catch (InterruptedException e) {
+	    System.err.println(e.getMessage());
+	    System.err.flush();
+	    System.exit(1);
+	}
     }
     
-    public void subscribe(Client client, String topic) {
-	Job job = new Job(Job.Type.SUBSCRIBE, client, topic);
-	jobsQueue.add(job);
-    }
-    
-    public void publish(Packet packet, String topic) {
-	Job job = new Job(Job.Type.PUBLISH, packet, topic);
-	jobsQueue.add(job);
+    public void publish(Packet packet) {
+	Job job = new Job(Job.Type.PUBLISH, packet);
+
+	try {
+	    jobsQueue.put(job);
+	} catch (InterruptedException e) {
+	    System.err.println(e.getMessage());
+	    System.err.flush();
+	    System.exit(1);
+	}
     }
     
     public void run() {
@@ -97,11 +111,11 @@ public class PubSub extends Thread {
     }
     
     private void handlePublish(Job job) {
-	if (!topics.containsKey(job.topic)) {
+	if (!topics.containsKey(job.packet.getTopic())) {
 	    return;
 	}
 
-	Topic topic = topics.get(job.topic);
+	Topic topic = topics.get(job.packet.getTopic());
 	Packet packet = job.packet;
 	int qos;
 	
@@ -114,15 +128,19 @@ public class PubSub extends Thread {
     
     private void handleSubscribe(Job job) {
 	Topic topic;
-
-	if (!topics.containsKey(job.topic)) {
-	    topic = new Topic(job.topic);
-	    topics.put(job.topic, topic);
-	} else  {
-	    topic = topics.get(job.topic);
+	
+	for (String k : job.packet.getTopics().keySet()) {
+	    int qos = job.packet.getTopics().get(k);
+	    if (!topics.containsKey(k)) {
+		topic = new Topic(k);
+		topics.put(k, topic);
+	    } else {
+		topic = topics.get(k);
+	    }
+	    
+	    topic.clients.put(job.client, qos);
 	}
 	
-	topic.clients.put(job.client, job.packet.getQoS());
 	return;
     }
 }

@@ -10,12 +10,15 @@ import java.nio.channels.SocketChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.CancelledKeyException;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+
+import java.util.Collection;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.List;
+
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 import io.jull.bee.client.Client;
 import io.jull.bee.packet.Packet;
@@ -31,6 +34,7 @@ public final class Server extends ServerAdapter implements Runnable {
     private List<Worker> workers;
     private int current = 0;
     private List<Client> clients;
+    private PubSub pubsub;
 
     public class Worker extends Thread {
 	private BlockingQueue<Client> clientsQueue;
@@ -73,6 +77,9 @@ public final class Server extends ServerAdapter implements Runnable {
 	    worker.start();
 	}
 	clients = new ArrayList<Client>();
+	
+	pubsub = new PubSub();
+	pubsub.start();
     }
 
     public Server(int port, int workers) {
@@ -249,7 +256,7 @@ public final class Server extends ServerAdapter implements Runnable {
 	return true;
     }
     
-    private boolean authorizePublish(Client client, String topic, ByteBuffer[] payload) {
+    private boolean authorizePublish(Client client, String topic, Collection<ByteBuffer> payload) {
 	return true;
     }
     
@@ -301,17 +308,21 @@ public final class Server extends ServerAdapter implements Runnable {
     }
 
     @Override
-    public final void onClientSubscribe(Client client, String topic) {
-	if (!authorizeSubscribe(client, topic)) {
+    public final void onClientSubscribe(Client client, Packet packet) {
+	if (!authorizeSubscribe(client, packet.getTopic())) {
 	    return;
 	}
+	
+	pubsub.subscribe(client, packet);
     }
     
     @Override
-    public final void onClientPublish(Client client, String topic, ByteBuffer[] payload) {
-	if (!authorizePublish(client, topic, payload)) {
+    public final void onClientPublish(Client client, Packet packet) {
+	if (!authorizePublish(client, packet.getTopic(), packet.getPayload())) {
 	    return;
 	}
+	
+	pubsub.publish(packet);
     }
     
     @Override

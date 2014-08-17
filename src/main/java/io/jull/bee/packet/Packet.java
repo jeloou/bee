@@ -34,6 +34,8 @@ public class Packet extends AbstractClient implements PacketInterface {
     private boolean complete;
     private boolean valid;
     
+    private String topic;
+
     public Packet(Type type, boolean duplicate, short qos, boolean retain, byte[] variable) {
 	this.type = type;
 	this.duplicate = duplicate;
@@ -142,6 +144,9 @@ public class Packet extends AbstractClient implements PacketInterface {
 	case SUBSCRIBE:
 	    parseSubscribe(buffer);
 	    break;
+	case PUBLISH:
+	    parsePublish(buffer);
+	    break;
 	default:
 	    break;
 	}
@@ -235,6 +240,25 @@ public class Packet extends AbstractClient implements PacketInterface {
 	valid = true;
     }
     
+    private void parsePublish(ByteBuffer buffer) {
+	topic = getString(buffer);
+	if (qos > 0) {
+	    id = getShort(buffer);
+	}
+	
+	payload.add(buffer);
+	
+	int read = buffer.limit()-buffer.position();
+	if (remaining > read) {
+	    remaining -= read;
+	    valid = true;
+	    return;
+	}
+	
+	complete = true;
+	valid = true;
+    }
+    
     private boolean needsQoS() {
 	if (type == Type.PUBLISH || type == Type.PUBREL || type == Type.SUBSCRIBE || type == Type.UNSUBSCRIBE) {
 	    return true;
@@ -279,6 +303,14 @@ public class Packet extends AbstractClient implements PacketInterface {
 	return qos;
     }
     
+    public String getTopic() {
+	return topic;
+    }
+    
+    public Map<String, Integer> getTopics() {
+	return topics;
+    }
+    
     public ByteBuffer toBuffer() {
 	byte fixed = 0x00;
 	int length;
@@ -293,7 +325,7 @@ public class Packet extends AbstractClient implements PacketInterface {
 	
 	if (retain)
 	    fixed |= OrMask.RETAIN;
-	
+
 	length = variable.length;
 	if (hasPayload()) {
 	    for (ByteBuffer buffer : getPayload()) {
