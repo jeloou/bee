@@ -55,7 +55,9 @@ public final class Server extends ServerAdapter implements Runnable {
 			continue;
 		    }
 		    
-		    client.parse(buffer);
+		    do {
+			client.parse(buffer);
+		    } while (buffer.remaining() > 0);
 		} catch (InterruptedException e) {
 		} catch (RuntimeException e ) {
 		    System.err.println(e.getMessage());
