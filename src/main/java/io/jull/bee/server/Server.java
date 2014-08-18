@@ -44,8 +44,6 @@ public final class Server extends ServerAdapter implements Runnable {
 	}
 	
 	public void run() {
-	    System.out.println("worker running");
-	    
 	    ByteBuffer buffer = null;
 	    Client client = null;
 	    
@@ -155,8 +153,6 @@ public final class Server extends ServerAdapter implements Runnable {
 			}
 			
 			if (key.isAcceptable()) {
-			    System.out.println("isAcceptable");
-			    
 			    SocketChannel channel = server.accept();
 			    channel.configureBlocking(false);
 			    
@@ -171,8 +167,6 @@ public final class Server extends ServerAdapter implements Runnable {
 			}
 			
 			if (key.isReadable()) {
-			    System.out.println("isReadable");
-			    
 			    ByteBuffer buffer = ByteBuffer.allocate(16384);
 			    client = (Client) key.attachment();
 			    
@@ -183,15 +177,15 @@ public final class Server extends ServerAdapter implements Runnable {
 
 				Worker worker = null;
 				if (client.worker == null) {
-				    worker = workers.get(current);
-				    
+				    client.worker = workers.get(current);
 				    if (current == workers.size()-1) {
 					current = 0;
 				    } else {
 					current++;
 				    }
-				}
+				} 
 				
+				worker = client.worker;
 				worker.clientsQueue.put(client);
 			    } else {
 				System.out.println("EOT");
@@ -203,8 +197,6 @@ public final class Server extends ServerAdapter implements Runnable {
 			}
 			
 			if (key.isWritable()) {
-			    System.out.println("isWritable");
-			    
 			    client = (Client) key.attachment();
 			    ByteBuffer buffer = client.outQueue.peek();
 			    do {
