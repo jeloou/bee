@@ -114,7 +114,7 @@ public class PubSub extends Thread {
 	if (!topics.containsKey(job.packet.getTopic())) {
 	    return;
 	}
-
+	
 	Topic topic = topics.get(job.packet.getTopic());
 	Packet packet = job.packet;
 	int qos;
@@ -122,7 +122,7 @@ public class PubSub extends Thread {
 	for (Client client : topic.clients.keySet()) {
 	    qos = topic.clients.get(client);
 	    packet.setQoS(qos);
-	    client.send(packet, false);
+	    client.send(packet);
 	}
     }
     
