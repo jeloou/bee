@@ -5,6 +5,8 @@ import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.Collection;
 
+import java.io.ByteArrayOutputStream;
+
 import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 
@@ -26,7 +28,7 @@ public class Packet extends AbstractClient implements PacketInterface {
     private byte[] willMessage;
     
     private int remaining;
-    private byte[] variable;
+    private ByteArrayOutputStream variable;
     private Collection<ByteBuffer> payload;
     
     private int returnCode;
@@ -41,21 +43,36 @@ public class Packet extends AbstractClient implements PacketInterface {
 	this.duplicate = duplicate;
 	this.qos = qos;
 	this.retain = retain;
-	this.variable = variable;
+	this.variable = new ByteArrayOutputStream();
+	this.variable.write(variable, 0, variable.length);
 	isnew = false;
     }
     
     public Packet() {
 	payload = new ArrayList<ByteBuffer>();
+	this.variable = new ByteArrayOutputStream();
     }
 
-    private String getString(ByteBuffer buffer, int length) {
+    private String getString(ByteBuffer buffer, int length, boolean copy) {
 	byte[] bytes = getBytes(buffer, length);
+	
+	if (copy) {
+	    variable.write(bytes, 0, bytes.length);
+	}
+	
 	return new String(bytes, Charset.forName("UTF-8"));
     }
-
+    
+    private String getString(ByteBuffer buffer, boolean copy) {
+	return getString(buffer, getShort(buffer, copy), copy);
+    }
+    
+    private String getString(ByteBuffer buffer, int length) {
+	return getString(buffer, length, false);
+    }
+    
     private String getString(ByteBuffer buffer) {
-	return getString(buffer, getShort(buffer));
+	return getString(buffer, getShort(buffer), false);
     }
     
     private byte getByte(ByteBuffer buffer) {
@@ -76,7 +93,16 @@ public class Packet extends AbstractClient implements PacketInterface {
     }
     
     private int getShort(ByteBuffer buffer) {
+	return getShort(buffer, false);
+    }
+    
+    private int getShort(ByteBuffer buffer, boolean copy) {
 	byte[] bytes = getBytes(buffer, 2);
+	
+	if (copy) {
+	    variable.write(bytes, 0, 2);
+	}
+	
 	return ((bytes[0] << 8) & 0xff00) | (bytes[1] & 0xff);
     }
     
@@ -241,9 +267,9 @@ public class Packet extends AbstractClient implements PacketInterface {
     }
     
     private void parsePublish(ByteBuffer buffer) {
-	topic = getString(buffer);
+	topic = getString(buffer, true);
 	if (qos > 0) {
-	    id = getShort(buffer);
+	    id = getShort(buffer, true);
 	}
 	
 	payload.add(buffer);
@@ -326,10 +352,10 @@ public class Packet extends AbstractClient implements PacketInterface {
 	if (retain)
 	    fixed |= OrMask.RETAIN;
 
-	length = variable.length;
+	length = variable.size();
 	if (hasPayload()) {
 	    for (ByteBuffer buffer : getPayload()) {
-		length += buffer.limit();
+		length += (buffer.limit() - buffer.position());
 	    }
 	}
 	
@@ -352,7 +378,7 @@ public class Packet extends AbstractClient implements PacketInterface {
 	ByteBuffer buffer = ByteBuffer.allocate(1 + i + length);
 	buffer.put(fixed);
 	buffer.put(remaining, 0, i);
-	buffer.put(variable);
+	buffer.put(variable.toByteArray());
 	buffer.flip();
 
 	return buffer;

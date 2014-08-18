@@ -145,7 +145,7 @@ public class Client extends AbstractClient implements ClientInterface {
 	    outQueue.add(packet.toBuffer());
 	    if (packet.hasPayload()) {
 		for (ByteBuffer buffer : packet.getPayload()) {
-		    outQueue.add(packet.toBuffer());
+		    outQueue.add(buffer);
 		}
 	    }
 	}
