@@ -1,6 +1,7 @@
 package io.jull.bee.packet;
 
 import java.util.Map;
+import java.util.List;
 import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -37,7 +38,9 @@ public class Packet extends AbstractClient implements PacketInterface {
     private boolean valid;
     
     private String topic;
+    private List<Integer> topicsQos;
 
+    
     public Packet(Type type, boolean duplicate, short qos, boolean retain, byte[] variable) {
 	this.type = type;
 	this.duplicate = duplicate;
@@ -46,6 +49,13 @@ public class Packet extends AbstractClient implements PacketInterface {
 	this.variable = new ByteArrayOutputStream();
 	this.variable.write(variable, 0, variable.length);
 	isnew = false;
+    }
+    
+    public Packet(Type type, boolean duplicate, short qos, boolean retain, byte[] variable, byte[] payload) {
+	this(type, duplicate, qos, retain, variable);
+	
+	this.payload = new ArrayList<ByteBuffer>();
+	this.payload.add(ByteBuffer.wrap(payload));
     }
     
     public Packet() {
@@ -241,8 +251,9 @@ public class Packet extends AbstractClient implements PacketInterface {
     private void parseSubscribe(ByteBuffer buffer) {
 	String topic;
 	int qos;
-
+	
 	topics = new HashMap<String, Integer>();
+	topicsQos = new ArrayList<Integer>();
 	id = getShort(buffer);
 	
 	int length;
@@ -260,6 +271,7 @@ public class Packet extends AbstractClient implements PacketInterface {
 	    }
 	    
 	    topics.put(topic, qos);
+	    topicsQos.add(qos);
 	} while(remaining > 0);
 	
 	complete = true;
@@ -307,6 +319,10 @@ public class Packet extends AbstractClient implements PacketInterface {
 	return type;
     }
     
+    public int getId() {
+	return id;
+    }
+    
     public boolean isComplete() {
 	return complete;
     }
@@ -335,6 +351,10 @@ public class Packet extends AbstractClient implements PacketInterface {
     
     public Map<String, Integer> getTopics() {
 	return topics;
+    }
+    
+    public List<Integer> getTopicsQos() {
+	return topicsQos;
     }
     
     public ByteBuffer toBuffer() {

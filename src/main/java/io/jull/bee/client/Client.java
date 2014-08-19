@@ -122,6 +122,10 @@ public class Client extends AbstractClient implements ClientInterface {
     
     private void handleSubscribe() {
 	listener.onClientSubscribe(this, packet);
+	
+	if (packet.getQoS() > 0) {
+	    send(PacketFactory.createSuback(packet));
+	}
 	packet = null;
     }
     
