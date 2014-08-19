@@ -265,7 +265,7 @@ public class Packet extends AbstractClient implements PacketInterface {
 	    }
 	    
 	    qos = getByte(buffer) & 0xff;
-	    if (qos > 1) {
+	    if (qos > 2) {
 		complete = true;
 		return;
 	    }
