@@ -60,7 +60,7 @@ public class Packet extends AbstractClient implements PacketInterface {
     
     public Packet() {
 	payload = new ArrayList<ByteBuffer>();
-	this.variable = new ByteArrayOutputStream();
+	variable = new ByteArrayOutputStream();
     }
 
     private String getString(ByteBuffer buffer, int length, boolean copy) {
@@ -279,21 +279,35 @@ public class Packet extends AbstractClient implements PacketInterface {
     }
     
     private void parsePublish(ByteBuffer buffer) {
-	topic = getString(buffer, true);
-	if (qos > 0) {
-	    id = getShort(buffer, true);
+	if (variable.size() < 1) {
+	    topic = getString(buffer, true);
+	    if (qos > 0) {
+		id = getShort(buffer, true);
+	    }
 	}
 	
-	payload.add(buffer);
+	int left = buffer.limit() - buffer.position();
+	int limit = buffer.position() + remaining;
 	
-	int read = buffer.limit()-buffer.position();
-	if (remaining > read) {
-	    remaining -= read;
+	if (limit > buffer.capacity()) {
+	    limit = buffer.capacity();
+	}
+	
+	if (left > remaining) {
+	    payload.add((ByteBuffer)buffer.asReadOnlyBuffer().limit(limit));
+	    buffer.position(limit);
+	    remaining = 0;
+
+	    complete = true;
 	    valid = true;
 	    return;
 	}
 	
-	complete = true;
+	payload.add((ByteBuffer)buffer.asReadOnlyBuffer());
+	buffer.position(limit);
+	remaining -= left;
+	
+	complete = remaining > 0? false : true;
 	valid = true;
     }
     
