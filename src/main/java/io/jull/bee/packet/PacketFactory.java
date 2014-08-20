@@ -32,4 +32,7 @@ public class PacketFactory {
 	return new Packet(Packet.Type.SUBACK, false, (short)0, false, variable, payload);
     }
     
+    public static Packet createPingResp() {
+	return new Packet(Packet.Type.PINGRESP, false, (short)0, false);
+    }
 }

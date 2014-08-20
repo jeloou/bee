@@ -87,6 +87,9 @@ public class Client extends AbstractClient implements ClientInterface {
 	case PUBCOMP:
 	    handleAck();
 	    break;
+	case PINGREQ:
+	    handlePingReq();
+	    break;
 	default:
 	    break;
 	}
@@ -143,6 +146,11 @@ public class Client extends AbstractClient implements ClientInterface {
     
     private void handleAck() {
 	listener.onClientAck(this, packet);
+	packet = null;
+    }
+    
+    private void handlePingReq() {
+	send(PacketFactory.createPingResp());
 	packet = null;
     }
     

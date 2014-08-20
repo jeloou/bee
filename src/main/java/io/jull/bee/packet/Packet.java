@@ -47,7 +47,10 @@ public class Packet extends AbstractClient implements PacketInterface {
 	this.qos = qos;
 	this.retain = retain;
 	this.variable = new ByteArrayOutputStream();
-	this.variable.write(variable, 0, variable.length);
+	if (variable.length > 0) {
+	    this.variable.write(variable, 0, variable.length);
+	}
+	
 	isnew = false;
     }
     
@@ -56,6 +59,10 @@ public class Packet extends AbstractClient implements PacketInterface {
 	
 	this.payload = new ArrayList<ByteBuffer>();
 	this.payload.add(ByteBuffer.wrap(payload));
+    }
+    
+    public Packet(Type type, boolean duplicate, short qos, boolean retain) {
+	this(type, duplicate, qos, retain, new byte[0]);
     }
     
     public Packet() {
@@ -189,6 +196,9 @@ public class Packet extends AbstractClient implements PacketInterface {
 	case PUBREL:
 	case PUBCOMP:
 	    parseAck(buffer);
+	    break;
+	case PINGREQ:
+	    parsePingReq(buffer);
 	    break;
 	default:
 	    break;
@@ -325,6 +335,11 @@ public class Packet extends AbstractClient implements PacketInterface {
 	valid = true;
     }
     
+    private void parsePingReq(ByteBuffer buffer) {
+	complete = true;
+	valid = true;
+    }
+    
     private boolean needsQoS() {
 	if (type == Type.PUBLISH || type == Type.PUBREL || type == Type.SUBSCRIBE || type == Type.UNSUBSCRIBE) {
 	    return true;
@@ -426,7 +441,10 @@ public class Packet extends AbstractClient implements PacketInterface {
 	ByteBuffer buffer = ByteBuffer.allocate(1 + i + length);
 	buffer.put(fixed);
 	buffer.put(remaining, 0, i);
-	buffer.put(variable.toByteArray());
+	if (length > 0) {
+	    buffer.put(variable.toByteArray());
+	}
+	
 	buffer.flip();
 
 	return buffer;
