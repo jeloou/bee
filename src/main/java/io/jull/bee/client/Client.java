@@ -80,6 +80,13 @@ public class Client extends AbstractClient implements ClientInterface {
 	case PUBLISH:
 	    handlePublish();
 	    break;
+	case SUBACK:
+	case PUBACK:
+	case PUBREC:
+	case PUBREL:
+	case PUBCOMP:
+	    handleAck();
+	    break;
 	default:
 	    break;
 	}
@@ -131,6 +138,11 @@ public class Client extends AbstractClient implements ClientInterface {
     
     private void handlePublish() {
 	listener.onClientPublish(this, packet);
+	packet = null;
+    }
+    
+    private void handleAck() {
+	listener.onClientAck(this, packet);
 	packet = null;
     }
     

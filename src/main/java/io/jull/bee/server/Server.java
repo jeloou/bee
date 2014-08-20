@@ -320,6 +320,11 @@ public final class Server extends ServerAdapter implements Runnable {
     }
     
     @Override
+    public final void onClientAck(Client client, Packet packet) {
+	pubsub.ack(client, packet);
+    }
+    
+    @Override
     public final void onClientWriteDemand(Client client) {
 	try {
 	    client.key.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);

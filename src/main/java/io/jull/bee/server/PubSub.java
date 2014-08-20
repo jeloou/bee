@@ -83,6 +83,10 @@ public class PubSub extends Thread {
 	}
     }
     
+    public void ack(Client client, Packet packet) {
+	
+    }
+    
     public void run() {
 	Job job;
 	

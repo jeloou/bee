@@ -183,6 +183,13 @@ public class Packet extends AbstractClient implements PacketInterface {
 	case PUBLISH:
 	    parsePublish(buffer);
 	    break;
+	case SUBACK:
+	case PUBACK:
+	case PUBREC:
+	case PUBREL:
+	case PUBCOMP:
+	    parseAck(buffer);
+	    break;
 	default:
 	    break;
 	}
@@ -308,6 +315,13 @@ public class Packet extends AbstractClient implements PacketInterface {
 	remaining -= left;
 	
 	complete = remaining > 0? false : true;
+	valid = true;
+    }
+    
+    private void parseAck(ByteBuffer buffer) {
+	id = getShort(buffer);
+	
+	complete = true;
 	valid = true;
     }
     
