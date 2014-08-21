@@ -144,6 +144,10 @@ public class Client extends AbstractClient implements ClientInterface {
     
     private void handleUnsubscribe() {
 	listener.onClientUnsubscribe(this, packet);
+	
+	if (packet.getQoS() > 0) {
+	    send(PacketFactory.createUnsuback(packet));
+	}
 	packet = null;
     }
     

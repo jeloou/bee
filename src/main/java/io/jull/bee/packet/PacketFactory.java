@@ -32,6 +32,16 @@ public class PacketFactory {
 	return new Packet(Packet.Type.SUBACK, false, (short)0, false, variable, payload);
     }
     
+    public static Packet createUnsuback(Packet packet) {
+	byte[] variable = new byte[2];
+	int id = packet.getId();
+	
+	variable[0] |= (byte)((id >> 8) & 0xff);
+	variable[1] |= (byte)(id & 0xff);
+	
+	return new Packet(Packet.Type.UNSUBACK, false, (short)0, false, variable);
+    }
+    
     public static Packet createPingResp() {
 	return new Packet(Packet.Type.PINGRESP, false, (short)0, false);
     }
