@@ -17,8 +17,8 @@ import io.jull.bee.packet.Packet;
 public class PubSub extends Thread {
     static private class Job {
 	public enum Type {
-	    PUBLISH, SUBSCRIBE
-	}
+	    PUBLISH, SUBSCRIBE, UNSUBSCRIBE
+        }
 	
 	private Type type;
 	
@@ -71,6 +71,18 @@ public class PubSub extends Thread {
 	}
     }
     
+    public void unsubscribe(Client client, Packet packet) {
+	Job job = new Job(Job.Type.UNSUBSCRIBE, client, packet);
+	
+	try {
+	    jobsQueue.put(job);
+	} catch (InterruptedException e) {
+	    System.err.println(e.getMessage());
+	    System.err.flush();
+	    System.exit(1);
+	}
+    }
+    
     public void publish(Packet packet) {
 	Job job = new Job(Job.Type.PUBLISH, packet);
 
@@ -100,6 +112,9 @@ public class PubSub extends Thread {
 		    break;
 		case SUBSCRIBE:
 		    handleSubscribe(job);
+		    break;
+		case UNSUBSCRIBE:
+		    handleUnsubscribe(job);
 		    break;
 		default:
 		    break;
@@ -146,6 +161,22 @@ public class PubSub extends Thread {
 	}
 	
 	return;
+    }
+
+    private void handleUnsubscribe(Job job) {
+	Topic topic;
+
+	for (String k : job.packet.getTopics().keySet()) {
+	    if (topics.containsKey(k)) {
+		topic = topics.get(k);
+		
+		if (!topic.clients.containsKey(job.client)) {
+		    return;
+		}
+		
+		topic.clients.remove(job.client);
+	    }
+	}
     }
 }
 

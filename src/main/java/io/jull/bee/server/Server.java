@@ -311,6 +311,11 @@ public final class Server extends ServerAdapter implements Runnable {
     }
     
     @Override
+    public final void onClientUnsubscribe(Client client, Packet packet) {
+	pubsub.unsubscribe(client, packet);
+    }
+    
+    @Override
     public final void onClientPublish(Client client, Packet packet) {
 	if (!authorizePublish(client, packet.getTopic(), packet.getPayload())) {
 	    return;
@@ -327,7 +332,7 @@ public final class Server extends ServerAdapter implements Runnable {
     @Override
     public final void onClientWriteDemand(Client client) {
 	try {
-	    client.key.interestOps(SelectionKey.OP_READ | SelectionKey.OP_WRITE);
+	    client.key.interestOps(client.key.interestOps() | SelectionKey.OP_WRITE);
 	} catch (CancelledKeyException e) {
 	    client.outQueue.clear();
 	}

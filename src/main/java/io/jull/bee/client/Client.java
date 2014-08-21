@@ -77,6 +77,9 @@ public class Client extends AbstractClient implements ClientInterface {
         case SUBSCRIBE:
 	    handleSubscribe();
 	    break;
+	case UNSUBSCRIBE:
+	    handleUnsubscribe();
+	    break;
 	case PUBLISH:
 	    handlePublish();
 	    break;
@@ -136,6 +139,11 @@ public class Client extends AbstractClient implements ClientInterface {
 	if (packet.getQoS() > 0) {
 	    send(PacketFactory.createSuback(packet));
 	}
+	packet = null;
+    }
+    
+    private void handleUnsubscribe() {
+	listener.onClientUnsubscribe(this, packet);
 	packet = null;
     }
     

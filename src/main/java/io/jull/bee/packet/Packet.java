@@ -187,6 +187,9 @@ public class Packet extends AbstractClient implements PacketInterface {
 	case SUBSCRIBE:
 	    parseSubscribe(buffer);
 	    break;
+	case UNSUBSCRIBE:
+	    parseUnsubscribe(buffer);
+	    break;
 	case PUBLISH:
 	    parsePublish(buffer);
 	    break;
@@ -289,6 +292,27 @@ public class Packet extends AbstractClient implements PacketInterface {
 	    
 	    topics.put(topic, qos);
 	    topicsQos.add(qos);
+	} while(remaining > 0);
+	
+	complete = true;
+	valid = true;
+    }
+    
+    private void parseUnsubscribe(ByteBuffer buffer) {
+	String topic;
+	
+	topics = new HashMap<String, Integer>();
+	id = getShort(buffer);
+	
+	int length;
+	do {
+	    length = getShort(buffer);
+	    topic = getString(buffer, length);
+	    if (topic.length() < length) {
+		break;
+	    }
+	    
+	    topics.put(topic, 0);
 	} while(remaining > 0);
 	
 	complete = true;

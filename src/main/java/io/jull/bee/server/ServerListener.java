@@ -9,6 +9,7 @@ public interface ServerListener {
     public void onClientConnect(Client client, Packet packet);
     public void onClientDisconnect(Client client);
     public void onClientSubscribe(Client client, Packet packet);
+    public void onClientUnsubscribe(Client client, Packet packet);
     public void onClientPublish(Client client, Packet packet);
     public void onClientAck(Client client, Packet packet);
     public void onClientWriteDemand(Client client);
