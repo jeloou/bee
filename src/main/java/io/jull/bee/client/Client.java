@@ -35,6 +35,11 @@ public class Client extends AbstractClient implements ClientInterface {
 	outQueue = new LinkedBlockingQueue<ByteBuffer>();
     }
     
+    @Override
+    public int hashCode() {
+	return client.clientId.hashCode();
+    }
+    
     @Override 
     public boolean equals(Object o) {
 	if (o == null) {
