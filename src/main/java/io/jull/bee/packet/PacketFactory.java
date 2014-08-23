@@ -14,6 +14,16 @@ public class PacketFactory {
 	return createConnack(Packet.ReturnCode.ACCEPTED);
     }
     
+    public static Packet createPuback(Packet packet) {
+	byte[] variable = new byte[2];
+	int id = packet.getId();
+	
+	variable[0] |= (byte)((id >> 8) & 0xff);
+	variable[1] |= (byte)(id & 0xff);
+	
+	return new Packet(Packet.Type.PUBACK, false, (short)0, false, variable);
+    }
+    
     public static Packet createSuback(Packet packet) {
 	byte[] variable = new byte[2];
 	int id = packet.getId();

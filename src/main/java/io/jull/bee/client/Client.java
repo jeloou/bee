@@ -157,6 +157,14 @@ public class Client extends AbstractClient implements ClientInterface {
     }
     
     private void handlePublish() {
+	switch (packet.getQoS()) {
+	case 1:
+	    send(PacketFactory.createPuback(packet));
+	    break;
+	default:
+	    break;
+	}
+	
 	listener.onClientPublish(this, packet);
 	packet = null;
     }
