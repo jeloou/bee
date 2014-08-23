@@ -5,7 +5,9 @@ import java.nio.channels.ByteChannel;
 import java.nio.channels.SelectionKey;
 import java.nio.ByteBuffer;
 
+import java.util.Map;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -25,14 +27,22 @@ public class Client extends AbstractClient implements ClientInterface {
     
     private ServerListener listener;
     private Status status = Status.NOT_CONNECTED;
+    
+    private Map<Integer, Packet> inflight;
+    private Map<Integer, Packet> packets;
+    
     private Packet packet;
     
     private boolean endAfter = false;
     
     public Client(ServerListener listener) {
 	this.listener = listener;
+	
 	inQueue = new LinkedBlockingQueue<ByteBuffer>();
 	outQueue = new LinkedBlockingQueue<ByteBuffer>();
+	
+	packets = new HashMap<Integer, Packet>();
+	inflight = new HashMap<Integer, Packet>();
     }
     
     @Override
@@ -88,7 +98,6 @@ public class Client extends AbstractClient implements ClientInterface {
 	case PUBLISH:
 	    handlePublish();
 	    break;
-	case SUBACK:
 	case PUBACK:
 	case PUBREC:
 	case PUBREL:
@@ -157,19 +166,72 @@ public class Client extends AbstractClient implements ClientInterface {
     }
     
     private void handlePublish() {
-	switch (packet.getQoS()) {
+	int id = packet.getId();
+	int qos = packet.getQoS();
+	
+	if (qos > 1) {
+	    if (packets.containsKey(id)) {
+		return;
+	    }
+	    
+	    packets.put(id, packet);
+	}
+	
+	Packet ack = null;
+	
+	switch (qos) {
 	case 1:
-	    send(PacketFactory.createPuback(packet));
+	    ack = PacketFactory.createPuback(packet);
+	    break;
+	case 2:
+	    ack = PacketFactory.createPubrec(packet);
+	    inflight.put(id, ack);
 	    break;
 	default:
 	    break;
 	}
 	
-	listener.onClientPublish(this, packet);
+	if (ack != null) {
+	    send(ack);
+	}
+	
+	if (qos < 2) {
+	    listener.onClientPublish(this, packet);
+	}
+	
 	packet = null;
     }
     
     private void handleAck() {
+	int id = packet.getId();
+
+	if (!inflight.containsKey(id)) {
+	    return;
+	}
+	
+	Packet inflightPacket = inflight.get(id);
+	Packet ack = null;
+	
+	switch(packet.getType()) {
+	case PUBREL:
+	    if (inflightPacket.getType() != Packet.Type.PUBREC) {
+		return;
+	    }
+	    
+	    listener.onClientPublish(this, packet);
+	    packets.remove(id);
+
+	    ack = PacketFactory.createPubcomp(packet);
+	    inflight.remove(id);
+	    break;
+	default:
+	    break;
+	}
+
+	if (ack != null) {
+	    send(ack);
+	}
+	
 	listener.onClientAck(this, packet);
 	packet = null;
     }
