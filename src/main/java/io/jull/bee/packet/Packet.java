@@ -34,6 +34,7 @@ public class Packet extends AbstractClient implements PacketInterface {
     
     private int returnCode;
     private boolean isnew = true;
+    private boolean changed = false;
     private boolean complete;
     private boolean valid;
     
@@ -69,7 +70,7 @@ public class Packet extends AbstractClient implements PacketInterface {
 	payload = new ArrayList<ByteBuffer>();
 	variable = new ByteArrayOutputStream();
     }
-
+    
     private String getString(ByteBuffer buffer, int length, boolean copy) {
 	byte[] bytes = getBytes(buffer, length);
 	
@@ -193,7 +194,6 @@ public class Packet extends AbstractClient implements PacketInterface {
 	case PUBLISH:
 	    parsePublish(buffer);
 	    break;
-	case SUBACK:
 	case PUBACK:
 	case PUBREC:
 	case PUBREL:
@@ -243,7 +243,7 @@ public class Packet extends AbstractClient implements PacketInterface {
 	    return;
 	}
 	clientId = getString(buffer, length);
-
+	
 	if (will) {
 	    willTopic = getString(buffer);
 	    willMessage = getBytes(buffer);
@@ -364,6 +364,41 @@ public class Packet extends AbstractClient implements PacketInterface {
 	valid = true;
     }
     
+    private void generate() {
+	switch(getType()) {
+	case PUBLISH:
+	    generatePublish();
+	    break;
+	default:
+	    break;
+	}
+
+	changed = false;
+    }
+    
+    private void generatePublish() {
+	byte[] length = new byte[2];
+	byte[] topic;
+	
+	variable.reset();
+	
+	topic = this.topic.getBytes(Charset.forName("UTF-8"));
+	length[0] |= (byte)((topic.length >> 8) & 0xff);
+	length[1] |= (byte)(topic.length & 0xff);
+	
+	variable.write(length, 0, 2);
+	variable.write(topic, 0, topic.length);
+	
+	if (qos > 0) {
+	    byte[] id = new byte[2];
+	    
+	    id[0] |= (byte)((this.id >> 8) & 0xff);
+	    id[1] |= (byte)(this.id & 0xff);
+	    
+	    variable.write(id, 0, 2);
+	}
+    }
+    
     private boolean needsQoS() {
 	if (type == Type.PUBLISH || type == Type.PUBREL || type == Type.SUBSCRIBE || type == Type.UNSUBSCRIBE) {
 	    return true;
@@ -390,6 +425,11 @@ public class Packet extends AbstractClient implements PacketInterface {
 	return id;
     }
     
+    public void setId(int id) {
+	this.id = id;
+	changed = true;
+    }
+    
     public boolean isComplete() {
 	return complete;
     }
@@ -403,9 +443,8 @@ public class Packet extends AbstractClient implements PacketInterface {
     }
     
     public void setQoS(int qos) {
-	if (qos > 0 && qos < 2) {
-	    this.qos = qos;
-	}
+	this.qos = qos;
+	changed = true;
     }
     
     public int getQoS() {
@@ -430,15 +469,22 @@ public class Packet extends AbstractClient implements PacketInterface {
 	
 	fixed |= (TypeValues.indexOf(type) << Shift.TYPE);
 	
-	if (duplicate)
+	if (duplicate) {
 	    fixed |= OrMask.DUPLICATE;
+	}
 	
-	if (qos > 0)
+	if (qos > 0) {
 	    fixed |= (qos << Shift.QOS);
+	}
 	
-	if (retain)
+	if (retain) {
 	    fixed |= OrMask.RETAIN;
-
+	}
+	
+	if (changed) {
+	    generate();
+	}
+	
 	length = variable.size();
 	if (hasPayload()) {
 	    for (ByteBuffer buffer : getPayload()) {
@@ -470,7 +516,6 @@ public class Packet extends AbstractClient implements PacketInterface {
 	}
 	
 	buffer.flip();
-
 	return buffer;
     }
     

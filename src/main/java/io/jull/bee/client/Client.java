@@ -8,6 +8,7 @@ import java.nio.ByteBuffer;
 import java.util.Map;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Random;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -28,10 +29,12 @@ public class Client extends AbstractClient implements ClientInterface {
     private ServerListener listener;
     private Status status = Status.NOT_CONNECTED;
     
-    private Map<Integer, Packet> inflight;
+    private Map<Integer, Packet> inInflight;
+    private Map<Integer, Packet> outInflight;
     private Map<Integer, Packet> packets;
     
     private Packet packet;
+    private int currentId;
     
     private boolean endAfter = false;
     
@@ -41,8 +44,12 @@ public class Client extends AbstractClient implements ClientInterface {
 	inQueue = new LinkedBlockingQueue<ByteBuffer>();
 	outQueue = new LinkedBlockingQueue<ByteBuffer>();
 	
+	inInflight = new HashMap<Integer, Packet>();
+	outInflight = new HashMap<Integer, Packet>();
 	packets = new HashMap<Integer, Packet>();
-	inflight = new HashMap<Integer, Packet>();
+       
+	Random rand = new Random();
+	currentId = (rand.nextInt(65535) + 1);
     }
     
     @Override
@@ -185,7 +192,7 @@ public class Client extends AbstractClient implements ClientInterface {
 	    break;
 	case 2:
 	    ack = PacketFactory.createPubrec(packet);
-	    inflight.put(id, ack);
+	    inInflight.put(id, ack);
 	    break;
 	default:
 	    break;
@@ -204,25 +211,63 @@ public class Client extends AbstractClient implements ClientInterface {
     
     private void handleAck() {
 	int id = packet.getId();
-
-	if (!inflight.containsKey(id)) {
-	    return;
-	}
 	
-	Packet inflightPacket = inflight.get(id);
+	Packet inflight = null;
 	Packet ack = null;
 	
-	switch(packet.getType()) {
-	case PUBREL:
-	    if (inflightPacket.getType() != Packet.Type.PUBREC) {
+	switch (packet.getType()) {
+	case PUBACK:
+	    if (!outInflight.containsKey(id)) {
+		return;
+	    }
+
+	    inflight = outInflight.get(id);
+	    if (inflight.getType() != Packet.Type.PUBLISH) {
 		return;
 	    }
 	    
-	    listener.onClientPublish(this, packet);
+	    outInflight.remove(id);
+	    break;
+	case PUBREL:
+	    if (!inInflight.containsKey(id)) {
+		return;
+	    }
+	    
+	    inflight = inInflight.get(id);
+	    if (inflight.getType() != Packet.Type.PUBREC) {
+		return;
+	    }
+	    
+	    listener.onClientPublish(this, packets.get(id));
 	    packets.remove(id);
 
 	    ack = PacketFactory.createPubcomp(packet);
-	    inflight.remove(id);
+	    inInflight.remove(id);
+	    break;
+	case PUBREC:
+	    if (!outInflight.containsKey(id)) {
+		return;
+	    }
+
+	    inflight = outInflight.get(id);
+	    if (inflight.getType() != Packet.Type.PUBLISH) {
+		return;
+	    }
+	    
+	    ack = PacketFactory.createPubrel(packet);
+	    outInflight.put(id, ack);
+	    break;
+	case PUBCOMP:
+	    if (!outInflight.containsKey(id)) {
+		return;
+	    }
+
+	    inflight = outInflight.get(id);
+	    if (inflight.getType() != Packet.Type.PUBREL) {
+		return;
+	    }
+	    
+	    outInflight.remove(id);
 	    break;
 	default:
 	    break;
@@ -251,8 +296,24 @@ public class Client extends AbstractClient implements ClientInterface {
 	end();
     }
     
+    private int nextId() {
+	currentId++;
+	if (currentId > 65535) {
+	    currentId = 1;
+	}
+	
+	return currentId;
+    }
+    
     public void send(Packet packet, boolean callback) {
 	synchronized(this) {
+	    if (packet.getQoS() > 0) {
+		if (packet.getType() == Packet.Type.PUBLISH) {
+		    packet.setId(nextId());
+		    outInflight.put(packet.getId(), packet);
+		}
+	    }
+	    
 	    outQueue.add(packet.toBuffer());
 	    if (packet.hasPayload()) {
 		for (ByteBuffer buffer : packet.getPayload()) {

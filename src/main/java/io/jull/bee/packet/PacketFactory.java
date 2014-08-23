@@ -34,6 +34,16 @@ public class PacketFactory {
 	return new Packet(Packet.Type.PUBREC, false, (short)0, false, variable);
     }
     
+    public static Packet createPubrel(Packet packet) {
+	byte[] variable = new byte[2];
+	int id = packet.getId();
+	
+	variable[0] |= (byte)((id >> 8) & 0xff);
+	variable[1] |= (byte)(id & 0xff);
+	
+	return new Packet(Packet.Type.PUBREL, false, (short)0, false, variable);
+    }
+    
     public static Packet createPubcomp(Packet packet) {
 	byte[] variable = new byte[2];
 	int id = packet.getId();
