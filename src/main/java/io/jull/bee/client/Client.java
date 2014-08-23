@@ -37,7 +37,7 @@ public class Client extends AbstractClient implements ClientInterface {
     
     @Override
     public int hashCode() {
-	return client.clientId.hashCode();
+	return clientId.hashCode();
     }
     
     @Override 
