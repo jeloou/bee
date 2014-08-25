@@ -124,6 +124,15 @@ public class Packet extends AbstractClient implements PacketInterface {
 	return ((bytes[0] << 8) & 0xff00) | (bytes[1] & 0xff);
     }
     
+    public static byte[] getShortBytes(int n) {
+	byte[] bytes = new byte[2];
+
+	bytes[0] |= (byte)((n >> 8) & 0xff);
+	bytes[1] |= (byte)(n & 0xff);
+
+	return bytes;
+    }
+    
     private int calcRemaining(ByteBuffer buffer) {
 	int m = 1, r = 0;
 	byte b;
@@ -383,19 +392,13 @@ public class Packet extends AbstractClient implements PacketInterface {
 	variable.reset();
 	
 	topic = this.topic.getBytes(Charset.forName("UTF-8"));
-	length[0] |= (byte)((topic.length >> 8) & 0xff);
-	length[1] |= (byte)(topic.length & 0xff);
+	length = getShortBytes(topic.length);
 	
 	variable.write(length, 0, 2);
 	variable.write(topic, 0, topic.length);
 	
 	if (qos > 0) {
-	    byte[] id = new byte[2];
-	    
-	    id[0] |= (byte)((this.id >> 8) & 0xff);
-	    id[1] |= (byte)(this.id & 0xff);
-	    
-	    variable.write(id, 0, 2);
+	    variable.write(getShortBytes(id), 0, 2);
 	}
     }
     

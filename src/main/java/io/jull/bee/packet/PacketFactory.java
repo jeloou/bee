@@ -15,51 +15,27 @@ public class PacketFactory {
     }
     
     public static Packet createPuback(Packet packet) {
-	byte[] variable = new byte[2];
 	int id = packet.getId();
-	
-	variable[0] |= (byte)((id >> 8) & 0xff);
-	variable[1] |= (byte)(id & 0xff);
-	
-	return new Packet(Packet.Type.PUBACK, false, (short)0, false, variable);
+	return new Packet(Packet.Type.PUBACK, false, (short)0, false, Packet.getShortBytes(id));
     }
     
     public static Packet createPubrec(Packet packet) {
-	byte[] variable = new byte[2];
 	int id = packet.getId();
-	
-	variable[0] |= (byte)((id >> 8) & 0xff);
-	variable[1] |= (byte)(id & 0xff);
-	
-	return new Packet(Packet.Type.PUBREC, false, (short)0, false, variable);
+	return new Packet(Packet.Type.PUBREC, false, (short)0, false, Packet.getShortBytes(id));
     }
     
     public static Packet createPubrel(Packet packet) {
-	byte[] variable = new byte[2];
 	int id = packet.getId();
-	
-	variable[0] |= (byte)((id >> 8) & 0xff);
-	variable[1] |= (byte)(id & 0xff);
-	
-	return new Packet(Packet.Type.PUBREL, false, (short)0, false, variable);
+	return new Packet(Packet.Type.PUBREL, false, (short)0, false, Packet.getShortBytes(id));
     }
     
     public static Packet createPubcomp(Packet packet) {
-	byte[] variable = new byte[2];
 	int id = packet.getId();
-	
-	variable[0] |= (byte)((id >> 8) & 0xff);
-	variable[1] |= (byte)(id & 0xff);
-	
-	return new Packet(Packet.Type.PUBCOMP, false, (short)0, false, variable);
+	return new Packet(Packet.Type.PUBCOMP, false, (short)0, false, Packet.getShortBytes(id));
     }
     
     public static Packet createSuback(Packet packet) {
-	byte[] variable = new byte[2];
 	int id = packet.getId();
-	
-	variable[0] |= (byte)((id >> 8) & 0xff);
-	variable[1] |= (byte)(id & 0xff);
 	
 	List<Integer> topicsQos = packet.getTopicsQos();
 	byte[] payload = new byte[topicsQos.size()];
@@ -69,17 +45,12 @@ public class PacketFactory {
 	    payload[i++] |= (byte)(qos & 0xff);
 	}
 	
-	return new Packet(Packet.Type.SUBACK, false, (short)0, false, variable, payload);
+	return new Packet(Packet.Type.SUBACK, false, (short)0, false, Packet.getShortBytes(id), payload);
     }
     
     public static Packet createUnsuback(Packet packet) {
-	byte[] variable = new byte[2];
 	int id = packet.getId();
-	
-	variable[0] |= (byte)((id >> 8) & 0xff);
-	variable[1] |= (byte)(id & 0xff);
-	
-	return new Packet(Packet.Type.UNSUBACK, false, (short)0, false, variable);
+	return new Packet(Packet.Type.UNSUBACK, false, (short)0, false, Packet.getShortBytes(id));
     }
     
     public static Packet createPingResp() {
