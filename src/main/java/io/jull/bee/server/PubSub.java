@@ -17,7 +17,7 @@ import io.jull.bee.packet.Packet;
 public class PubSub extends Thread {
     static private class Job {
 	public enum Type {
-	    PUBLISH, SUBSCRIBE, UNSUBSCRIBE
+	    PUBLISH, SUBSCRIBE, UNSUBSCRIBE, CLEAN
         }
 	
 	private Type type;
@@ -30,12 +30,12 @@ public class PubSub extends Thread {
 	    this.client = client;
 	    this.packet = packet;
 	}
-	
-	public Job(Type type, Packet packet) {
-	    this.type = type;
-	    this.packet = packet;
-	}
 
+	public Job(Type type, Client client) {
+	    this.type = type;
+	    this.client = client;
+	}
+	
 	public Type getType() {
 	    return type;
 	}
@@ -59,9 +59,7 @@ public class PubSub extends Thread {
 	topics = new HashMap<String, Topic>();
     }
     
-    public void subscribe(Client client, Packet packet) {
-	Job job = new Job(Job.Type.SUBSCRIBE, client, packet);
-	
+    private void addJob(Job job) {
 	try {
 	    jobsQueue.put(job);
 	} catch (InterruptedException e) {
@@ -69,30 +67,26 @@ public class PubSub extends Thread {
 	    System.err.flush();
 	    System.exit(1);
 	}
+    }
+    
+    public void subscribe(Client client, Packet packet) {
+	Job job = new Job(Job.Type.SUBSCRIBE, client, packet);
+	addJob(job);
     }
     
     public void unsubscribe(Client client, Packet packet) {
 	Job job = new Job(Job.Type.UNSUBSCRIBE, client, packet);
-	
-	try {
-	    jobsQueue.put(job);
-	} catch (InterruptedException e) {
-	    System.err.println(e.getMessage());
-	    System.err.flush();
-	    System.exit(1);
-	}
+	addJob(job);
     }
     
-    public void publish(Packet packet) {
-	Job job = new Job(Job.Type.PUBLISH, packet);
-
-	try {
-	    jobsQueue.put(job);
-	} catch (InterruptedException e) {
-	    System.err.println(e.getMessage());
-	    System.err.flush();
-	    System.exit(1);
-	}
+    public void clean(Client client) {	
+	Job job = new Job(Job.Type.CLEAN, client);
+	addJob(job);
+    }
+    
+    public void publish(Client client, Packet packet) {
+	Job job = new Job(Job.Type.PUBLISH, client, packet);
+	addJob(job);
     }
     
     public void ack(Client client, Packet packet) {
@@ -115,6 +109,9 @@ public class PubSub extends Thread {
 		    break;
 		case UNSUBSCRIBE:
 		    handleUnsubscribe(job);
+		    break;
+		case CLEAN:
+		    handleClean(job);
 		    break;
 		default:
 		    break;
@@ -174,6 +171,17 @@ public class PubSub extends Thread {
 		    return;
 		}
 		
+		topic.clients.remove(job.client);
+	    }
+	}
+    }
+
+    private void handleClean(Job job) {
+	Topic topic;
+	
+	for (String k: job.client.getSubscriptions()) {
+	    if (topics.containsKey(k)) {
+		topic = topics.get(k);
 		topic.clients.remove(job.client);
 	    }
 	}

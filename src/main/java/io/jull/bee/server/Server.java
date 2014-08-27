@@ -280,6 +280,7 @@ public final class Server extends ServerAdapter implements Runnable {
 	synchronized(clients) {
 	    int i = clients.indexOf(client);
 	    if (client == clients.get(i)) {
+		pubsub.clean(client);
 		return clients.remove(client);
 	    }
 	    
@@ -296,6 +297,10 @@ public final class Server extends ServerAdapter implements Runnable {
 
     @Override
     public final void onClientDisconnect(Client client) {
+	if (!client.getClean()) {
+	    return;
+	}
+	
 	if (removeClient(client)) {
 	    //onDisconnect(client);
 	}
@@ -321,7 +326,7 @@ public final class Server extends ServerAdapter implements Runnable {
 	    return;
 	}
 	
-	pubsub.publish(packet);
+	pubsub.publish(client, packet);
     }
     
     @Override

@@ -9,6 +9,8 @@ import java.util.Map;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Random;
+import java.util.List;
+import java.util.ArrayList;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
@@ -32,6 +34,7 @@ public class Client extends AbstractClient implements ClientInterface {
     private Map<Integer, Packet> inInflight;
     private Map<Integer, Packet> outInflight;
     private Map<Integer, Packet> packets;
+    private List<String> subscriptions;
     
     private Packet packet;
     private int currentId;
@@ -47,7 +50,8 @@ public class Client extends AbstractClient implements ClientInterface {
 	inInflight = new HashMap<Integer, Packet>();
 	outInflight = new HashMap<Integer, Packet>();
 	packets = new HashMap<Integer, Packet>();
-       
+	subscriptions = new ArrayList<String>();
+	
 	Random rand = new Random();
 	currentId = (rand.nextInt(65535) + 1);
     }
@@ -96,7 +100,7 @@ public class Client extends AbstractClient implements ClientInterface {
 	case DISCONNECT:
 	    handleDisconnect();
 	    break;
-        case SUBSCRIBE:
+	case SUBSCRIBE:
 	    handleSubscribe();
 	    break;
 	case UNSUBSCRIBE:
@@ -155,6 +159,7 @@ public class Client extends AbstractClient implements ClientInterface {
     }
     
     private void handleSubscribe() {
+	subscriptions.addAll((Collection<String>)packet.getTopics().keySet());
 	listener.onClientSubscribe(this, packet);
 	
 	if (packet.getQoS() > 0) {
@@ -367,5 +372,9 @@ public class Client extends AbstractClient implements ClientInterface {
 
     public boolean getEndAfter() {
 	return endAfter;
+    }
+
+    public List<String> getSubscriptions() {
+	return subscriptions;
     }
 }
