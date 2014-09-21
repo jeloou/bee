@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Arrays;
 
 import java.io.ByteArrayOutputStream;
 
@@ -13,7 +14,42 @@ import java.nio.charset.Charset;
 
 import io.jull.bee.common.AbstractClient;
 
-public class Packet extends AbstractClient implements PacketInterface {
+public class Packet extends AbstractClient {
+    public enum Type {
+	RESERVED, CONNECT, CONNACK, PUBLISH, PUBACK,
+        PUBREC, PUBREL, PUBCOMP, SUBSCRIBE,
+        SUBACK, UNSUBSCRIBE, UNSUBACK, PINGREQ,
+	PINGRESP, DISCONNECT
+    }
+
+    private static List<Type> TypeValues = Arrays.asList(Type.values());
+    
+    private final class Mask {
+	public static final byte DUPLICATE = 0x01;
+	public static final byte RETAIN = 0x01;
+	public static final byte QOS = 0x03;
+    }
+    
+    private class OrMask {
+	public static final byte DUPLICATE = 0x08;
+	public static final byte RETAIN = 0x01;
+    }
+    
+    private class Shift {
+	public static final byte TYPE = 0X04;
+	public static final byte QOS = 0x01;
+	public static final byte DUPLICATE = 0x03;
+    }
+
+    public class ReturnCode {
+	public static final byte ACCEPTED = 0x00;
+	public static final byte UNACCEPTABLE_VERSION = 0x01;
+	public static final byte ID_REJECTED = 0x02;
+	public static final byte SERVER_UNAVAILABLE = 0x03;
+	public static final byte BAD_CREDENTIALS = 0x04;
+	public static final byte NOT_AUTHORIZED = 0x05;
+    }
+    
     private int id;
     private Type type;
     
