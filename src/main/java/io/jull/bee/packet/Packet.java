@@ -24,21 +24,33 @@ public class Packet extends AbstractClient {
 
     private static List<Type> TypeValues = Arrays.asList(Type.values());
     
-    private final class Mask {
+    private class Mask {
 	public static final byte DUPLICATE = 0x01;
 	public static final byte RETAIN = 0x01;
 	public static final byte QOS = 0x03;
+
+	private Mask() {
+	    throw new AssertionError();
+	}
     }
     
     private class OrMask {
 	public static final byte DUPLICATE = 0x08;
 	public static final byte RETAIN = 0x01;
+	
+	private OrMask() {
+	    throw new AssertionError();
+	}
     }
     
     private class Shift {
 	public static final byte TYPE = 0X04;
 	public static final byte QOS = 0x01;
 	public static final byte DUPLICATE = 0x03;
+	
+	private Shift() {
+	    throw new AssertionError();
+	}
     }
 
     public class ReturnCode {
@@ -48,6 +60,10 @@ public class Packet extends AbstractClient {
 	public static final byte SERVER_UNAVAILABLE = 0x03;
 	public static final byte BAD_CREDENTIALS = 0x04;
 	public static final byte NOT_AUTHORIZED = 0x05;
+
+	private ReturnCode() {
+	    throw new AssertionError();
+	}
     }
     
     private int id;
